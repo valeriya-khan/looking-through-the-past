@@ -8,6 +8,7 @@ import copy
 from utils import get_data_loader,checkattr
 from data.manipulate import SubDataset, MemorySetDataset
 from models.cl.continual_learner import ContinualLearner
+from eval import evaluate
 
 
 def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
@@ -53,7 +54,7 @@ def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
 
 #------------------------------------------------------------------------------------------------------------#
 
-def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
+def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_size=32, baseline='none',
              loss_cbs=list(), eval_cbs=list(), sample_cbs=list(), context_cbs=list(),
              generator=None, gen_iters=0, gen_loss_cbs=list(), **kwargs):
     '''Train a model (with a "train_a_batch" method) on multiple contexts.
@@ -470,6 +471,42 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
                             lambda y, x=model.classes_per_context: y % x
                         )
                         previous_datasets = [MemorySetDataset(model.memory_sets, target_transform=target_transform)]
+
+        progress.close()
+        if generator is not None:
+            progress_gen.close()
+
+        # accs = []
+        # for i in range(context):
+        #     acc = evaluate.test_acc(
+        #         model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
+        #             range(0, config['classes_per_context']*(i+1))
+        #         )
+        #     )
+        #     accs.append(acc)
+        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
+        # average_accs = sum(accs) / (context)
+        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+
+        # accs = []
+        # for i in range(context):
+        #     acc = evaluate.test_acc(
+        #         model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
+        #     )
+        #     accs.append(acc)
+        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
+        # average_accs = sum(accs) / (context)
+        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+
+        rec_losses = []
+        for i in range(context):
+            rec_loss = evaluate.test_degradation(
+                model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
+            )
+            rec_losses.append(rec_loss)
+            print(" - Context {}: {:.4f}".format(i + 1, acc))
+        average_accs = sum(rec_losses) / (context)
+        print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
 #------------------------------------------------------------------------------------------------------------#
 

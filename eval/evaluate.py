@@ -74,6 +74,59 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, verbose=True, conte
         print('=> accuracy: {:.3f}'.format(accuracy))
     return accuracy
 
+def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=True, context_id=None, allowed_classes=None,
+             no_context_mask=False, **kwargs):
+    '''Evaluate accuracy (= proportion of samples classified correctly) of a classifier ([model]) on [dataset].
+
+    [allowed_classes]   None or <list> containing all "active classes" between which should be chosen
+                            (these "active classes" are assumed to be contiguous)'''
+
+    # Get device-type / using cuda?
+    device = model.device if hasattr(model, 'device') else model._device()
+    cuda = model.cuda if hasattr(model, 'cuda') else model._is_on_cuda()
+
+    # Set model to eval()-mode
+    mode = model.training
+    model.eval()
+
+    # Apply context-specifc "gating-mask" for each hidden fully connected layer (or remove it!)
+    if hasattr(model, "mask_dict") and model.mask_dict is not None:
+        if no_context_mask:
+            model.reset_XdGmask()
+        else:
+            model.apply_XdGmask(context=context_id+1)
+
+    # If there is a separate network per context, select the correct subnetwork
+    if model.label=="SeparateClassifiers":
+        model = getattr(model, 'context{}'.format(context_id+1))
+        allowed_classes = None
+
+    # Loop over batches in [dataset]
+    data_loader = get_data_loader(dataset, batch_size, cuda=cuda)
+    total_tested = total_loss = 0
+    for x, y in data_loader:
+        # -break on [test_size] (if "None", full dataset is used)
+        if test_size:
+            if total_tested >= test_size:
+                break
+        # -if the model is a "stream-classifier", add context
+        if checkattr(model, 'stream_classifier'):
+            context_tensor = torch.tensor([context_id]*x.shape[0]).to(device)
+        # -evaluate model (if requested, only on [allowed_classes])
+        with torch.no_grad():
+            x_recon = model.forward(x.to(device),gate_input=y)
+            recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
+        # print(recon_loss.size())
+        # print(len(x))
+        total_loss += recon_loss.sum().item()
+        total_tested += len(x)
+    
+    degrad = total_loss / total_tested
+
+    # Set model back to its initial mode, print result on screen (if requested) and return it
+    # model.dg_gates = True
+    model.train(mode=mode)
+    return degrad
 
 def test_all_so_far(model, datasets, current_context, iteration, test_size=None, no_context_mask=False,
                     visdom=None, summary_graph=True, plotting_dict=None, verbose=False):

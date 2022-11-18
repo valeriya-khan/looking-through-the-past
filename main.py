@@ -408,7 +408,7 @@ def run(args, verbose=False):
         )
         # -perform training
         train_fn(
-            model, train_datasets, iters=args.iters, batch_size=args.batch, baseline=baseline,
+            model, train_datasets, test_datasets, config, iters=args.iters, batch_size=args.batch, baseline=baseline,
             sample_cbs=sample_cbs, eval_cbs=eval_cbs, loss_cbs=loss_cbs, context_cbs=context_cbs,
             # -if using generative replay with a separate generative model:
             generator=generator, gen_iters=args.g_iters if hasattr(args, 'g_iters') else args.iters,
