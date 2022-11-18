@@ -109,12 +109,9 @@ def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=Tru
         if test_size:
             if total_tested >= test_size:
                 break
-        # -if the model is a "stream-classifier", add context
-        if checkattr(model, 'stream_classifier'):
-            context_tensor = torch.tensor([context_id]*x.shape[0]).to(device)
         # -evaluate model (if requested, only on [allowed_classes])
         with torch.no_grad():
-            x_recon = model.forward(x.to(device),gate_input=y)
+            x_recon = model.forward(x.to(device),gate_input=y.to(device))
             recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
         # print(recon_loss.size())
         # print(len(x))
