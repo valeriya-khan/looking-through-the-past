@@ -504,7 +504,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
             )
             rec_losses.append(rec_loss)
-            print(" - Context {}: {:.4f}".format(i + 1, acc))
+            print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
         average_accs = sum(rec_losses) / (context)
         print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
