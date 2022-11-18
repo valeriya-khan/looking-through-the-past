@@ -488,15 +488,15 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         # average_accs = sum(accs) / (context)
         # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
-        # accs = []
-        # for i in range(context):
-        #     acc = evaluate.test_acc(
-        #         model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
-        #     )
-        #     accs.append(acc)
-        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
-        # average_accs = sum(accs) / (context)
-        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        accs = []
+        for i in range(context):
+            acc = evaluate.test_acc(
+                model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
+            )
+            accs.append(acc)
+            print(" - Context {}: {:.4f}".format(i + 1, acc))
+        average_accs = sum(accs) / (context)
+        print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
         rec_losses = []
         for i in range(context):
