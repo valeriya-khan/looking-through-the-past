@@ -1,0 +1,186 @@
+ - Context 1: 0.9665
+ - Context 1: 1.0114
+  <VAE>      | Context: 1/5 | training loss: 0.0348 | training accuracy: 1.0 |: 100%|█| 5000/5000 [03:03<00:00,
+ - Context 1: 0.9650
+ - Context 1: 1.2160
+ --> saved model mM-CIFAR10-N5-class--HC3-5x16-bn--CondVAE=F-1024x2000x2000--z100-GMM10pc-c10--i5000-lr0.0001-b
+256-pCvE-e100-adam-all-MSE--generative-KD2.0 to ./store/models
+
+
+***************************** EVALUATION *****************************
+
+ Accuracy of final model on test-set:
+ - Context 1: 0.9650
+ - Context 2: 0.0000
+ - Context 3: 0.0000
+ - Context 4: 0.0000
+ - Context 5: 0.0000
+=> average accuracy over all 5 contexts: 0.1930
+
+
+(contle) valeriya_khan@instance-1:~/continual-learning$ python main.py --experiment=CIFAR100 --scenario=class -
+-brain-inspired --seed=0
+CUDA is used
+
+
+ ***************************** LOAD DATA ******************************
+Files already downloaded and verified
+ --> CIFAR100: 'train'-dataset consisting of 50000 samples
+Files already downloaded and verified
+ --> CIFAR100: 'test'-dataset consisting of 10000 samples
+
+
+ ********************** DEFINE FEATURE EXTRACTOR **********************
+ --> loaded checkpoint of C3-5x16-bn-e100 from ./store/models
+-------------------------------------------------------
+FeatureExtractor(
+  (convE): ConvLayers(
+    (convLayer1): conv_layer(
+      (conv): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (bn): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer2): conv_layer(
+      (conv): Conv2d(16, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (bn): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer3): conv_layer(
+      (conv): Conv2d(32, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (bn): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer4): conv_layer(
+      (conv): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (bn): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer5): conv_layer(
+      (conv): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (nl): Identity()
+    )
+    (pooling): Identity()
+  )
+)
+-------------------------------------------------------
+--> this network has 393088 parameters (~0.4 million)
+       of which: - learnable: 0 (~0.0 million)
+                 - fixed: 393088 (~0.4 million)
+
+
+ ***************** PUT DATA TRHOUGH FEATURE EXTRACTOR *****************
+<TRAINSET> | dataset 10/10 |: 100%|████████████████████████████████████████████| 10/10 [00:17<00:00,  1.73s/it]
+<TESTSET>  | dataset 10/10 |: 100%|████████████████████████████████████████████| 10/10 [00:03<00:00,  2.93it/s]
+
+
+ *********************** DEFINE THE CLASSIFIER ************************
+-------------------------------------------------------
+CondVAE(
+  (convE): ConvLayers(
+    (pooling): Identity()
+  )
+  (flatten): Flatten()
+  (fcE): MLP(
+    (fcLayer1): fc_layer(
+      (linear): LinearExcitability(in_features=1024, out_features=2000)
+      (nl): ReLU()
+    )
+    (fcLayer2): fc_layer(
+      (linear): LinearExcitability(in_features=2000, out_features=2000)
+      (nl): ReLU()
+    )
+  )
+  (toZ): fc_layer_split(
+    (mean): fc_layer(
+      (linear): LinearExcitability(in_features=2000, out_features=100)
+    )
+    (logvar): fc_layer(
+      (linear): LinearExcitability(in_features=2000, out_features=100)
+    )
+  )
+  (classifier): fc_layer(
+    (linear): LinearExcitability(in_features=2000, out_features=100)
+  )
+  (fromZ): fc_layer(
+    (linear): LinearExcitability(in_features=100, out_features=2000)
+    (nl): ReLU()
+  )
+  (fcD): MLP(
+    (fcLayer1): fc_layer(
+      (linear): LinearExcitability(in_features=2000, out_features=2000)
+      (nl): ReLU()
+    )
+    (fcLayer2): fc_layer(
+      (linear): LinearExcitability(in_features=2000, out_features=1024)
+    )
+  )
+  (to_image): Reshape(channels = 256)
+  (convD): DeconvLayers()
+)
+-------------------------------------------------------
+--> this network has 12925224 parameters (~12.9 million)
+       of which: - learnable: 12925224 (~12.9 million)
+                 - fixed: 0 (~0.0 million)
+
+
+************************** PARAMETER STAMP ***************************
+ --> problem:       CIFAR100-N10-class
+ --> model:         HC3-5x16-bn--CondVAE=F-1024x2000x2000--z100-GMM100pc-c100
+ --> train-params:  i5000-lr0.0001-b256-pCvE-e100-adam-all-MSE
+ --> replay:        generative-KD2.0
+CIFAR100-N10-class--HC3-5x16-bn--CondVAE=F-1024x2000x2000--z100-GMM100pc-c100--i5000-lr0.0001-b256-pCvE-e100-ad
+am-all-MSE--generative-KD2.0
+
+
+****************************** TRAINING ******************************
+  <VAE>      | Context: 1/10 | training loss: 0.111 | training accuracy: 1.0 |: 100%|█| 5000/5000 [02:50<00:00,
+ - Accuracy on context 1 1: 0.7890
+ - Reconstruction loss on context 1 1: 0.8744
+  <VAE>      | Context: 1/10 | training loss: 0.056 | training accuracy: 0.996 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7760
+ - Reconstruction loss on context 1 1: 0.8730
+  <VAE>      | Context: 1/10 | training loss: 0.124 | training accuracy: 0.957 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7750
+ - Reconstruction loss on context 1 1: 0.9623
+  <VAE>      | Context: 1/10 | training loss: 0.132 | training accuracy: 0.969 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7750
+ - Reconstruction loss on context 1 1: 1.0887
+  <VAE>      | Context: 1/10 | training loss: 0.122 | training accuracy: 0.965 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7750
+ - Reconstruction loss on context 1 1: 1.2299
+  <VAE>      | Context: 1/10 | training loss: 0.201 | training accuracy: 0.938 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7700
+ - Reconstruction loss on context 1 1: 1.3780
+  <VAE>      | Context: 1/10 | training loss: 0.176 | training accuracy: 0.957 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7700
+ - Reconstruction loss on context 1 1: 1.5984
+  <VAE>      | Context: 1/10 | training loss: 0.151 | training accuracy: 0.953 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7640
+ - Reconstruction loss on context 1 1: 1.7841
+  <VAE>      | Context: 1/10 | training loss: 0.153 | training accuracy: 0.957 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7630
+ - Reconstruction loss on context 1 1: 1.9804
+  <VAE>      | Context: 1/10 | training loss: 0.116 | training accuracy: 0.977 |: 100%|█| 5000/5000 [03:17<00:0
+ - Accuracy on context 1 1: 0.7580
+ - Reconstruction loss on context 1 1: 2.2704
+ --> saved model mM-CIFAR100-N10-class--HC3-5x16-bn--CondVAE=F-1024x2000x2000--z100-GMM100pc-c100--i5000-lr0.00
+01-b256-pCvE-e100-adam-all-MSE--generative-KD2.0 to ./store/models
+
+
+***************************** EVALUATION *****************************
+
+ Accuracy of final model on test-set:
+ - Context 1: 0.7580
+ - Context 2: 0.0000
+ - Context 3: 0.0000
+ - Context 4: 0.0000
+ - Context 5: 0.0000
+ - Context 6: 0.0000
+ - Context 7: 0.0000
+ - Context 8: 0.0000
+ - Context 9: 0.0000
+ - Context 10: 0.0000
+=> average accuracy over all 10 contexts: 0.0758
+
+
+(contle) valeriya_khan@instance-1:~/continual-learning$
