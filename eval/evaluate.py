@@ -3,7 +3,7 @@ import torch
 from visual import visual_plt
 from visual import visual_visdom
 from utils import get_data_loader,checkattr
-
+from models.utils import loss_functions as lf
 
 ####--------------------------------------------------------------------------------------------------------------####
 
@@ -113,6 +113,7 @@ def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=Tru
         with torch.no_grad():
             x_recon = model.forward(x.to(device),gate_input=y.to(device))
             recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
+            recon_loss = lf.weighted_average(recon_loss, dim=0)       # -> average over batch
         # print(recon_loss.size())
         # print(len(x))
         total_loss += recon_loss.sum().item()
