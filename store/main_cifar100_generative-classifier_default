@@ -1,0 +1,233 @@
+                 [--dg-type TYPE] [--dg-prop DG_PROP] [--hidden] [--icarl] [--prototypes] [--g
+en-classifier] [--eval-s EVAL_S]
+./main.py: error: unrecognized arguments: --nofromp
+(contle) valeriya_khan@instance-2:~/continual-learning$ python main.py --experiment=CIFAR100 -
+(contle) valeriya_khan@instance-2:~/continual-learning$ python main.py --experiment=CIFAR100 -
+-scenario=class --seed=0 --gen-classifier --pre-convE --seed-to-ltag --time --hidden --lr=0.00
+1 --iters=500 --fc-layers=2 --fc-units=85 --z-dim=20 --eval-s=10000
+CUDA is used
+
+
+ ***************************** LOAD DATA ******************************
+Files already downloaded and verified
+ --> CIFAR100: 'train'-dataset consisting of 50000 samples
+Files already downloaded and verified
+ --> CIFAR100: 'test'-dataset consisting of 10000 samples
+
+
+ ********************** DEFINE FEATURE EXTRACTOR **********************
+ --> loaded checkpoint of C3-5x16-bn-e100-s0 from ./store/models
+-------------------------------------------------------
+FeatureExtractor(
+  (convE): ConvLayers(
+    (convLayer1): conv_layer(
+      (conv): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (bn): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer2): conv_layer(
+      (conv): Conv2d(16, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (bn): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer3): conv_layer(
+      (conv): Conv2d(32, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (bn): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer4): conv_layer(
+      (conv): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (bn): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (nl): ReLU()
+    )
+    (convLayer5): conv_layer(
+      (conv): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (nl): Identity()
+    )
+    (pooling): Identity()
+  )
+)
+-------------------------------------------------------
+--> this network has 393088 parameters (~0.4 million)
+       of which: - learnable: 0 (~0.0 million)
+                 - fixed: 393088 (~0.4 million)
+
+
+ ***************** PUT DATA TRHOUGH FEATURE EXTRACTOR *****************
+<TRAINSET> | dataset 100/100 |: 100%|███████████████████████| 100/100 [00:16<00:00,  6.21it/s]
+<TESTSET>  | dataset 10/10 |: 100%|███████████████████████████| 10/10 [00:03<00:00,  3.15it/s]
+
+
+ *********************** DEFINE THE CLASSIFIER ************************
+-------------------- 100 copies of: -------------------
+VAE(
+  (convE): ConvLayers(
+    (pooling): Identity()
+  )
+  (flatten): Flatten()
+  (fcE): MLP(
+    (fcLayer1): fc_layer(
+      (linear): LinearExcitability(in_features=1024, out_features=85)
+      (nl): ReLU()
+    )
+  )
+  (toZ): fc_layer_split(
+    (mean): fc_layer(
+      (linear): LinearExcitability(in_features=85, out_features=20)
+    )
+    (logvar): fc_layer(
+      (linear): LinearExcitability(in_features=85, out_features=20)
+    )
+  )
+  (fromZ): fc_layer(
+    (linear): LinearExcitability(in_features=20, out_features=85)
+    (nl): ReLU()
+  )
+  (fcD): MLP(
+    (fcLayer1): fc_layer(
+      (linear): LinearExcitability(in_features=85, out_features=1024)
+    )
+  )
+  (to_image): Reshape(channels = 256)
+  (convD): DeconvLayers()
+)
+-------------------------------------------------------
+--> this network has 180394 parameters (~0.2 million)
+       of which: - learnable: 180394 (~0.2 million)
+                 - fixed: 0 (~0.0 million)
+
+
+************************** PARAMETER STAMP ***************************
+ --> problem:       CIFAR100-N10-class
+ --> model:         HC3-5x16-bn--x100-VAE=F-1024x85--z20--none
+ --> train-params:  i500-lr0.001-b256-pCvE-e100-ps-adam-MSE
+CIFAR100-N10-class--HC3-5x16-bn--x100-VAE=F-1024x85--z20--none--i500-lr0.001-b256-pCvE-e100-ps
+-adam-MSE
+
+
+****************************** TRAINING ******************************
+  <VAE>      | Class: 1/100 | training loss: 0.132 |: 100%|█| 500/500 [00:03<00:00, 151.91it/s
+  <VAE>      | Class: 2/100 | training loss: 0.152 |: 100%|█| 500/500 [00:03<00:00, 152.63it/s
+  <VAE>      | Class: 3/100 | training loss: 0.147 |: 100%|█| 500/500 [00:03<00:00, 153.26it/s
+  <VAE>      | Class: 4/100 | training loss: 0.133 |: 100%|█| 500/500 [00:03<00:00, 157.20it/s
+  <VAE>      | Class: 5/100 | training loss: 0.12 |: 100%|█| 500/500 [00:03<00:00, 149.91it/s]
+  <VAE>      | Class: 6/100 | training loss: 0.143 |: 100%|█| 500/500 [00:03<00:00, 150.48it/s
+  <VAE>      | Class: 7/100 | training loss: 0.158 |: 100%|█| 500/500 [00:03<00:00, 153.14it/s
+  <VAE>      | Class: 8/100 | training loss: 0.13 |: 100%|█| 500/500 [00:03<00:00, 151.92it/s]
+  <VAE>      | Class: 9/100 | training loss: 0.124 |: 100%|█| 500/500 [00:03<00:00, 150.36it/s
+  <VAE>      | Class: 10/100 | training loss: 0.13 |: 100%|█| 500/500 [00:03<00:00, 152.86it/s
+  <VAE>      | Class: 11/100 | training loss: 0.143 |: 100%|█| 500/500 [00:03<00:00, 153.23it/
+  <VAE>      | Class: 12/100 | training loss: 0.157 |: 100%|█| 500/500 [00:03<00:00, 153.96it/
+  <VAE>      | Class: 13/100 | training loss: 0.125 |: 100%|█| 500/500 [00:03<00:00, 150.45it/
+  <VAE>      | Class: 14/100 | training loss: 0.16 |: 100%|█| 500/500 [00:03<00:00, 151.59it/s
+  <VAE>      | Class: 15/100 | training loss: 0.16 |: 100%|█| 500/500 [00:03<00:00, 149.46it/s
+  <VAE>      | Class: 16/100 | training loss: 0.139 |: 100%|█| 500/500 [00:03<00:00, 153.23it/
+  <VAE>      | Class: 17/100 | training loss: 0.143 |: 100%|█| 500/500 [00:03<00:00, 152.13it/
+  <VAE>      | Class: 18/100 | training loss: 0.106 |: 100%|█| 500/500 [00:03<00:00, 149.70it/
+  <VAE>      | Class: 19/100 | training loss: 0.135 |: 100%|█| 500/500 [00:03<00:00, 150.05it/
+  <VAE>      | Class: 20/100 | training loss: 0.139 |: 100%|█| 500/500 [00:03<00:00, 151.35it/
+  <VAE>      | Class: 21/100 | training loss: 0.123 |: 100%|█| 500/500 [00:03<00:00, 149.03it/
+  <VAE>      | Class: 22/100 | training loss: 0.129 |: 100%|█| 500/500 [00:03<00:00, 151.34it/
+  <VAE>      | Class: 23/100 | training loss: 0.139 |: 100%|█| 500/500 [00:03<00:00, 149.02it/
+  <VAE>      | Class: 24/100 | training loss: 0.0831 |: 100%|█| 500/500 [00:03<00:00, 148.61it
+  <VAE>      | Class: 25/100 | training loss: 0.0957 |: 100%|█| 500/500 [00:03<00:00, 150.54it
+  <VAE>      | Class: 26/100 | training loss: 0.142 |: 100%|█| 500/500 [00:03<00:00, 148.47it/
+  <VAE>      | Class: 27/100 | training loss: 0.145 |: 100%|█| 500/500 [00:03<00:00, 151.03it/
+  <VAE>      | Class: 28/100 | training loss: 0.119 |: 100%|█| 500/500 [00:03<00:00, 152.82it/
+  <VAE>      | Class: 29/100 | training loss: 0.118 |: 100%|█| 500/500 [00:03<00:00, 148.13it/
+  <VAE>      | Class: 30/100 | training loss: 0.133 |: 100%|█| 500/500 [00:03<00:00, 150.11it/
+  <VAE>      | Class: 31/100 | training loss: 0.0986 |: 100%|█| 500/500 [00:03<00:00, 151.72it
+  <VAE>      | Class: 32/100 | training loss: 0.127 |: 100%|█| 500/500 [00:03<00:00, 152.63it/
+  <VAE>      | Class: 33/100 | training loss: 0.135 |: 100%|█| 500/500 [00:03<00:00, 148.99it/
+  <VAE>      | Class: 34/100 | training loss: 0.113 |: 100%|█| 500/500 [00:03<00:00, 151.09it/
+  <VAE>      | Class: 35/100 | training loss: 0.134 |: 100%|█| 500/500 [00:03<00:00, 151.87it/
+  <VAE>      | Class: 36/100 | training loss: 0.158 |: 100%|█| 500/500 [00:03<00:00, 149.68it/
+  <VAE>      | Class: 37/100 | training loss: 0.127 |: 100%|█| 500/500 [00:03<00:00, 151.92it/
+  <VAE>      | Class: 38/100 | training loss: 0.136 |: 100%|█| 500/500 [00:03<00:00, 149.57it/
+  <VAE>      | Class: 39/100 | training loss: 0.125 |: 100%|█| 500/500 [00:03<00:00, 151.24it/
+  <VAE>      | Class: 40/100 | training loss: 0.141 |: 100%|█| 500/500 [00:03<00:00, 148.94it/
+  <VAE>      | Class: 41/100 | training loss: 0.14 |: 100%|█| 500/500 [00:03<00:00, 150.34it/s
+  <VAE>      | Class: 42/100 | training loss: 0.121 |: 100%|█| 500/500 [00:03<00:00, 152.49it/
+  <VAE>      | Class: 43/100 | training loss: 0.126 |: 100%|█| 500/500 [00:03<00:00, 155.07it/
+  <VAE>      | Class: 44/100 | training loss: 0.128 |: 100%|█| 500/500 [00:03<00:00, 151.55it/
+  <VAE>      | Class: 45/100 | training loss: 0.13 |: 100%|█| 500/500 [00:03<00:00, 151.55it/s
+  <VAE>      | Class: 46/100 | training loss: 0.154 |: 100%|█| 500/500 [00:03<00:00, 151.42it/
+  <VAE>      | Class: 47/100 | training loss: 0.149 |: 100%|█| 500/500 [00:03<00:00, 150.53it/
+  <VAE>      | Class: 48/100 | training loss: 0.11 |: 100%|█| 500/500 [00:03<00:00, 149.78it/s
+  <VAE>      | Class: 49/100 | training loss: 0.147 |: 100%|█| 500/500 [00:03<00:00, 151.63it/
+  <VAE>      | Class: 50/100 | training loss: 0.0972 |: 100%|█| 500/500 [00:03<00:00, 150.45it
+  <VAE>      | Class: 51/100 | training loss: 0.131 |: 100%|█| 500/500 [00:03<00:00, 153.99it/
+  <VAE>      | Class: 52/100 | training loss: 0.137 |: 100%|█| 500/500 [00:03<00:00, 152.56it/
+  <VAE>      | Class: 53/100 | training loss: 0.0914 |: 100%|█| 500/500 [00:03<00:00, 152.20it
+  <VAE>      | Class: 54/100 | training loss: 0.148 |: 100%|█| 500/500 [00:03<00:00, 150.05it/
+  <VAE>      | Class: 55/100 | training loss: 0.151 |: 100%|█| 500/500 [00:03<00:00, 154.04it/
+  <VAE>      | Class: 56/100 | training loss: 0.124 |: 100%|█| 500/500 [00:03<00:00, 151.68it/
+  <VAE>      | Class: 57/100 | training loss: 0.126 |: 100%|█| 500/500 [00:03<00:00, 150.42it/
+  <VAE>      | Class: 58/100 | training loss: 0.144 |: 100%|█| 500/500 [00:03<00:00, 153.41it/
+  <VAE>      | Class: 59/100 | training loss: 0.141 |: 100%|█| 500/500 [00:03<00:00, 155.32it/
+  <VAE>      | Class: 60/100 | training loss: 0.108 |: 100%|█| 500/500 [00:03<00:00, 152.46it/
+  <VAE>      | Class: 61/100 | training loss: 0.0746 |: 100%|█| 500/500 [00:03<00:00, 152.36it
+  <VAE>      | Class: 62/100 | training loss: 0.114 |: 100%|█| 500/500 [00:03<00:00, 151.19it/
+  <VAE>      | Class: 63/100 | training loss: 0.166 |: 100%|█| 500/500 [00:03<00:00, 152.50it/
+  <VAE>      | Class: 64/100 | training loss: 0.115 |: 100%|█| 500/500 [00:03<00:00, 148.84it/
+  <VAE>      | Class: 65/100 | training loss: 0.134 |: 100%|█| 500/500 [00:03<00:00, 148.84it/
+  <VAE>      | Class: 66/100 | training loss: 0.129 |: 100%|█| 500/500 [00:03<00:00, 151.14it/
+  <VAE>      | Class: 67/100 | training loss: 0.132 |: 100%|█| 500/500 [00:03<00:00, 154.48it/
+  <VAE>      | Class: 68/100 | training loss: 0.103 |: 100%|█| 500/500 [00:03<00:00, 150.86it/
+  <VAE>      | Class: 69/100 | training loss: 0.0961 |: 100%|█| 500/500 [00:03<00:00, 151.73it
+  <VAE>      | Class: 70/100 | training loss: 0.105 |: 100%|█| 500/500 [00:03<00:00, 151.01it/
+  <VAE>      | Class: 71/100 | training loss: 0.154 |: 100%|█| 500/500 [00:03<00:00, 151.05it/
+  <VAE>      | Class: 72/100 | training loss: 0.0806 |: 100%|█| 500/500 [00:03<00:00, 150.89it
+  <VAE>      | Class: 73/100 | training loss: 0.128 |: 100%|█| 500/500 [00:03<00:00, 151.44it/
+  <VAE>      | Class: 74/100 | training loss: 0.104 |: 100%|█| 500/500 [00:03<00:00, 151.28it/
+  <VAE>      | Class: 75/100 | training loss: 0.119 |: 100%|█| 500/500 [00:03<00:00, 151.64it/
+  <VAE>      | Class: 76/100 | training loss: 0.129 |: 100%|█| 500/500 [00:03<00:00, 152.44it/
+  <VAE>      | Class: 77/100 | training loss: 0.116 |: 100%|█| 500/500 [00:03<00:00, 150.61it/
+  <VAE>      | Class: 78/100 | training loss: 0.129 |: 100%|█| 500/500 [00:03<00:00, 152.85it/
+  <VAE>      | Class: 79/100 | training loss: 0.14 |: 100%|█| 500/500 [00:03<00:00, 152.17it/s
+  <VAE>      | Class: 80/100 | training loss: 0.112 |: 100%|█| 500/500 [00:03<00:00, 148.02it/
+  <VAE>      | Class: 81/100 | training loss: 0.122 |: 100%|█| 500/500 [00:03<00:00, 149.76it/
+  <VAE>      | Class: 82/100 | training loss: 0.147 |: 100%|█| 500/500 [00:03<00:00, 154.58it/
+  <VAE>      | Class: 83/100 | training loss: 0.159 |: 100%|█| 500/500 [00:03<00:00, 150.40it/
+  <VAE>      | Class: 84/100 | training loss: 0.175 |: 100%|█| 500/500 [00:03<00:00, 150.73it/
+  <VAE>      | Class: 85/100 | training loss: 0.144 |: 100%|█| 500/500 [00:03<00:00, 152.30it/
+  <VAE>      | Class: 86/100 | training loss: 0.125 |: 100%|█| 500/500 [00:03<00:00, 151.37it/
+  <VAE>      | Class: 87/100 | training loss: 0.14 |: 100%|█| 500/500 [00:03<00:00, 151.10it/s
+  <VAE>      | Class: 88/100 | training loss: 0.143 |: 100%|█| 500/500 [00:03<00:00, 149.11it/
+  <VAE>      | Class: 89/100 | training loss: 0.141 |: 100%|█| 500/500 [00:03<00:00, 154.25it/
+  <VAE>      | Class: 90/100 | training loss: 0.137 |: 100%|█| 500/500 [00:03<00:00, 150.57it/
+  <VAE>      | Class: 91/100 | training loss: 0.138 |: 100%|█| 500/500 [00:03<00:00, 147.52it/
+  <VAE>      | Class: 92/100 | training loss: 0.113 |: 100%|█| 500/500 [00:03<00:00, 150.84it/
+  <VAE>      | Class: 93/100 | training loss: 0.173 |: 100%|█| 500/500 [00:03<00:00, 152.47it/
+  <VAE>      | Class: 94/100 | training loss: 0.124 |: 100%|█| 500/500 [00:03<00:00, 149.70it/
+  <VAE>      | Class: 95/100 | training loss: 0.119 |: 100%|█| 500/500 [00:03<00:00, 150.34it/
+  <VAE>      | Class: 96/100 | training loss: 0.101 |: 100%|█| 500/500 [00:03<00:00, 153.76it/
+  <VAE>      | Class: 97/100 | training loss: 0.098 |: 100%|█| 500/500 [00:03<00:00, 155.05it/
+  <VAE>      | Class: 98/100 | training loss: 0.128 |: 100%|█| 500/500 [00:03<00:00, 150.11it/
+  <VAE>      | Class: 99/100 | training loss: 0.164 |: 100%|█| 500/500 [00:03<00:00, 152.26it/
+  <VAE>      | Class: 100/100 | training loss: 0.128 |: 100%|█| 500/500 [00:03<00:00, 150.96it
+Total training time = 330.4 seconds
+
+ --> saved model mM-CIFAR100-N10-class--HC3-5x16-bn--x100-VAE=F-1024x85--z20--none--i500-lr0.0
+01-b256-pCvE-e100-ps-adam-MSE to ./store/models
+
+
+***************************** EVALUATION *****************************
+
+ Accuracy of final model on test-set:
+ - Context 1: 0.4380
+ - Context 2: 0.4210
+ - Context 3: 0.5300
+ - Context 4: 0.4090
+ - Context 5: 0.4510
+ - Context 6: 0.4900
+ - Context 7: 0.5280
+ - Context 8: 0.4470
+ - Context 9: 0.4890
+ - Context 10: 0.4490
+=> average accuracy over all 10 contexts: 0.4652
+
+
+Total inference time = 54189.4 seconds
+
+(contle) valeriya_khan@instance-2:~/continual-learning$
