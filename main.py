@@ -453,8 +453,11 @@ def run(args, verbose=False):
     # Evaluate accuracy of final model on full test-set
     if verbose:
         print("\n Accuracy of final model on test-set:")
+    if args.time:
+        start = time.time()
     accs = []
     for i in range(args.contexts):
+
         acc = evaluate.test_acc(
             model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
                 range(config['classes_per_context']*i, config['classes_per_context']*(i+1))
@@ -467,6 +470,13 @@ def run(args, verbose=False):
     if verbose:
         print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(args.contexts, average_accs))
     # -write out to text file
+    if args.time:
+        inference_time = time.time() - start
+        time_file = open("{}/time-{}.txt".format(args.r_dir, param_stamp), 'w')
+        time_file.write('{}\n'.format(inference_time))
+        time_file.close()
+        if verbose and args.time:
+            print("Total inference time = {:.1f} seconds\n".format(inference_time))
     file_name = "{}/acc-{}{}.txt".format(args.r_dir, param_stamp,
                                          "--S{}".format(args.eval_s) if checkattr(args, 'gen_classifier') else "")
     output_file = open(file_name, 'w')
