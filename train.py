@@ -162,12 +162,20 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
             data_loader_previous = [None]*up_to_context
 
         # Define tqdm progress bar(s)
-        progress = tqdm.tqdm(range(1, iters+1))
+        if context==1:
+            iters_first = iters*(len(train_datasets)-1)
+            progress = tqdm.tqdm(range(1, iters_first+1))
+        else:
+            progress = tqdm.tqdm(range(1, iters+1))
         if generator is not None:
             progress_gen = tqdm.tqdm(range(1, gen_iters+1))
 
         # Loop over all iterations
-        iters_to_use = iters if (generator is None) else max(iters, gen_iters)
+        if context==1:
+            iters_to_use = iters_first
+        else:
+            iters_to_use = iters if (generator is None) else max(iters, gen_iters)
+
         for batch_index in range(1, iters_to_use+1):
 
             # Update # iters left on current data-loader(s) and, if needed, create new one(s)
@@ -344,7 +352,7 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
 
 
             #---> Train MAIN MODEL
-            if batch_index <= iters:
+            if batch_index <= iters_to_use:
 
                 # Train the main model with this batch
                 loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./context,
@@ -431,7 +439,7 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
         # Run the callbacks after finishing each context
         for context_cb in context_cbs:
             if context_cb is not None:
-                context_cb(model, iters, context=context)
+                context_cb(model, iters_to_use, context=context)
 
         # REPLAY: update source for replay
         if context<len(train_datasets) and hasattr(model, 'replay_mode'):
