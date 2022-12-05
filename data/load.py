@@ -88,6 +88,11 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         raise ValueError("Experiment '{}' cannot have more than {} contexts!".format(name, config['classes']))
     # -how many classes per context?
     classes_per_context = 10 if name=="permMNIST" else int(np.floor(config['classes'] / contexts))
+    if data_type == 'CIFAR100':
+        classes_per_first_context = 50
+        if contexts > 50:
+            raise ValueError("Experiment '{}' cannot have more than {} contexts!".format(name, 50))
+        classes_per_context = int(np.floor(50 / contexts))
     config['classes_per_context'] = classes_per_context
     config['output_units'] = classes_per_context if (scenario=='domain' or
                                                     (scenario=="task" and singlehead)) else classes_per_context*contexts
@@ -131,12 +136,20 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         testset = get_dataset(data_type, type="test", dir=data_dir, target_transform=target_transform, verbose=verbose,
                               augment=augment, normalize=normalize)
         # generate labels-per-dataset (if requested, training data is split up per class rather than per context)
-        labels_per_dataset_train = [[label] for label in range(classes)] if train_set_per_class else [
-            list(np.array(range(classes_per_context))+classes_per_context*context_id) for context_id in range(contexts)
-        ]
-        labels_per_dataset_test = [
-            list(np.array(range(classes_per_context))+classes_per_context*context_id) for context_id in range(contexts)
-        ]
+        if data_type!="CIFAR100":
+            labels_per_dataset_train = [[label] for label in range(classes)] if train_set_per_class else [
+                list(np.array(range(classes_per_context))+classes_per_context*context_id) for context_id in range(contexts)
+            ]
+            labels_per_dataset_test = [
+                list(np.array(range(classes_per_context))+classes_per_context*context_id) for context_id in range(contexts)
+            ]
+        else:
+            labels_per_dataset_train = [[label] for label in range(classes)] if train_set_per_class else [
+                list(np.array(range(classes_per_first_context))+classes_per_context*context_id) for context_id in range(contexts)
+            ]
+            labels_per_dataset_test = [
+                list(np.array(range(classes_per_first_context))+classes_per_context*context_id) for context_id in range(contexts)
+            ]
         # split the train and test datasets up into sub-datasets
         train_datasets = []
         for labels in labels_per_dataset_train:
