@@ -49,7 +49,13 @@ def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=Fals
         config['denormalize'] = AVAILABLE_TRANSFORMS[name+"_denorm"]
     trainset = get_dataset(name, type='train', dir=data_dir, verbose=verbose, normalize=normalize, augment=augment)
     testset = get_dataset(name, type='test', dir=data_dir, verbose=verbose, normalize=normalize)
-
+    if name=="CIFAR100":
+        classes_per_first_context = 50
+        labels_per_dataset_train = list(np.array(range(classes_per_first_context)))
+        labels_per_dataset_test = list(np.array(range(classes_per_first_context)))
+        trainset = SubDataset(trainset, labels_per_dataset_train)
+        testset = SubDataset(testset, labels_per_dataset_test)
+        config["output_units"] = 50   
     # Return tuple of data-sets and config-dictionary
     return (trainset, testset), config
 
