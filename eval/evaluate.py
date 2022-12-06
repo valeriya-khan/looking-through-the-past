@@ -111,7 +111,10 @@ def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=Tru
                 break
         # -evaluate model (if requested, only on [allowed_classes])
         with torch.no_grad():
-            x_recon = model.forward(x.to(device),gate_input=y.to(device))
+            if hasattr(model, "dg_gates") and model.dg_gates:
+                x_recon = model.forward(x.to(device),gate_input=y.to(device))
+            else:
+                x_recon = model.forward(x.to(device))
             recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
             recon_loss = lf.weighted_average(recon_loss, dim=0)       # -> average over batch
         # print(recon_loss.size())

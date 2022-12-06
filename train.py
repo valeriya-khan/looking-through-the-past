@@ -56,7 +56,7 @@ def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
 
 def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_size=32, baseline='none',
              loss_cbs=list(), eval_cbs=list(), sample_cbs=list(), context_cbs=list(),
-             generator=None, gen_iters=0, gen_loss_cbs=list(), **kwargs):
+             generator=None, gen_iters=0, gen_loss_cbs=list(), first_iters = 0, **kwargs):
     '''Train a model (with a "train_a_batch" method) on multiple contexts.
 
     [model]               <nn.Module> main model to optimize across all contexts
@@ -164,8 +164,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
 
         # Define tqdm progress bar(s)
         if context==1:
-            iters_first = iters*(len(train_datasets)-1)
-            progress = tqdm.tqdm(range(1, iters_first+1))
+            progress = tqdm.tqdm(range(1, first_iters+1))
         else:
             progress = tqdm.tqdm(range(1, iters+1))
         if generator is not None:
@@ -173,7 +172,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
 
         # Loop over all iterations
         if context==1:
-            iters_to_use = iters_first
+            iters_to_use = first_iters
         else:
             iters_to_use = iters if (generator is None) else max(iters, gen_iters)
 
@@ -498,20 +497,21 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         average_accs = sum(accs) / (context)
         print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
-        rec_losses = []
-        for i in range(context):
-            rec_loss = evaluate.test_degradation(
-                model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
-            )
-            rec_losses.append(rec_loss)
-            print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
-        average_accs = sum(rec_losses) / (context)
-        print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        if model.label == "VAE" or model.label == "CondVAE":
+            rec_losses = []
+            for i in range(context):
+                rec_loss = evaluate.test_degradation(
+                    model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
+                )
+                rec_losses.append(rec_loss)
+                print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
+            average_accs = sum(rec_losses) / (context)
+            print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
 #------------------------------------------------------------------------------------------------------------#
 
-def train_fromp(model, train_datasets, iters=2000, batch_size=32,
-                loss_cbs=list(), eval_cbs=list(), context_cbs=list(), **kwargs):
+def train_fromp(model, train_datasets,test_datasets, config, iters=2000, batch_size=32,
+                loss_cbs=list(), eval_cbs=list(), context_cbs=list(), first_iters = 0,**kwargs):
     '''Train a model (with a "train_a_batch" method) on multiple contexts using the FROMP algorithm.
 
     [model]               <nn.Module> main model to optimize across all contexts
@@ -646,7 +646,7 @@ def train_fromp(model, train_datasets, iters=2000, batch_size=32,
 
 #------------------------------------------------------------------------------------------------------------#
 
-def train_gen_classifier(model, train_datasets, iters=2000, epochs=None, batch_size=32,
+def train_gen_classifier(model, train_datasets, test_datasets, config, iters=2000, epochs=None, batch_size=32,first_iters=0,
                          loss_cbs=list(), sample_cbs=list(), eval_cbs=list(), context_cbs=list(), **kwargs):
     '''Train a generative classifier with a separate VAE per class.
 
