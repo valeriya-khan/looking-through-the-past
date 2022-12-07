@@ -8,6 +8,7 @@ import copy
 from utils import get_data_loader,checkattr
 from data.manipulate import SubDataset, MemorySetDataset
 from models.cl.continual_learner import ContinualLearner
+from eval import evaluate
 
 
 def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
@@ -53,9 +54,9 @@ def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
 
 #------------------------------------------------------------------------------------------------------------#
 
-def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
+def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_size=32, baseline='none',
              loss_cbs=list(), eval_cbs=list(), sample_cbs=list(), context_cbs=list(),
-             generator=None, gen_iters=0, gen_loss_cbs=list(), **kwargs):
+             generator=None, gen_iters=0, gen_loss_cbs=list(), first_iters = 0, **kwargs):
     '''Train a model (with a "train_a_batch" method) on multiple contexts.
 
     [model]               <nn.Module> main model to optimize across all contexts
@@ -162,12 +163,19 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
             data_loader_previous = [None]*up_to_context
 
         # Define tqdm progress bar(s)
-        progress = tqdm.tqdm(range(1, iters+1))
+        if context==1:
+            progress = tqdm.tqdm(range(1, first_iters+1))
+        else:
+            progress = tqdm.tqdm(range(1, iters+1))
         if generator is not None:
             progress_gen = tqdm.tqdm(range(1, gen_iters+1))
 
         # Loop over all iterations
-        iters_to_use = iters if (generator is None) else max(iters, gen_iters)
+        if context==1:
+            iters_to_use = first_iters
+        else:
+            iters_to_use = iters if (generator is None) else max(iters, gen_iters)
+
         for batch_index in range(1, iters_to_use+1):
 
             # Update # iters left on current data-loader(s) and, if needed, create new one(s)
@@ -344,7 +352,7 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
 
 
             #---> Train MAIN MODEL
-            if batch_index <= iters:
+            if batch_index <= iters_to_use:
 
                 # Train the main model with this batch
                 loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./context,
@@ -431,7 +439,7 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
         # Run the callbacks after finishing each context
         for context_cb in context_cbs:
             if context_cb is not None:
-                context_cb(model, iters, context=context)
+                context_cb(model, iters_to_use, context=context)
 
         # REPLAY: update source for replay
         if context<len(train_datasets) and hasattr(model, 'replay_mode'):
@@ -463,10 +471,47 @@ def train_cl(model, train_datasets, iters=2000, batch_size=32, baseline='none',
                         )
                         previous_datasets = [MemorySetDataset(model.memory_sets, target_transform=target_transform)]
 
+        progress.close()
+        if generator is not None:
+            progress_gen.close()
+
+        # accs = []
+        # for i in range(context):
+        #     acc = evaluate.test_acc(
+        #         model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
+        #             range(0, config['classes_per_context']*(i+1))
+        #         )
+        #     )
+        #     accs.append(acc)
+        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
+        # average_accs = sum(accs) / (context)
+        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+
+        accs = []
+        for i in range(context):
+            acc = evaluate.test_acc(
+                model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
+            )
+            accs.append(acc)
+            print(" - Context {}: {:.4f}".format(i + 1, acc))
+        average_accs = sum(accs) / (context)
+        print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+
+        if model.label == "VAE" or model.label == "CondVAE":
+            rec_losses = []
+            for i in range(context):
+                rec_loss = evaluate.test_degradation(
+                    model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
+                )
+                rec_losses.append(rec_loss)
+                print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
+            average_accs = sum(rec_losses) / (context)
+            print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+
 #------------------------------------------------------------------------------------------------------------#
 
-def train_fromp(model, train_datasets, iters=2000, batch_size=32,
-                loss_cbs=list(), eval_cbs=list(), context_cbs=list(), **kwargs):
+def train_fromp(model, train_datasets,test_datasets, config, iters=2000, batch_size=32,
+                loss_cbs=list(), eval_cbs=list(), context_cbs=list(), first_iters = 0,**kwargs):
     '''Train a model (with a "train_a_batch" method) on multiple contexts using the FROMP algorithm.
 
     [model]               <nn.Module> main model to optimize across all contexts
@@ -601,7 +646,7 @@ def train_fromp(model, train_datasets, iters=2000, batch_size=32,
 
 #------------------------------------------------------------------------------------------------------------#
 
-def train_gen_classifier(model, train_datasets, iters=2000, epochs=None, batch_size=32,
+def train_gen_classifier(model, train_datasets, test_datasets, config, iters=2000, epochs=None, batch_size=32,first_iters=0,
                          loss_cbs=list(), sample_cbs=list(), eval_cbs=list(), context_cbs=list(), **kwargs):
     '''Train a generative classifier with a separate VAE per class.
 

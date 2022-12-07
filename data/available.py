@@ -7,6 +7,7 @@ AVAILABLE_DATASETS = {
     'MNIST': datasets.MNIST,
     'CIFAR100': datasets.CIFAR100,
     'CIFAR10': datasets.CIFAR10,
+    'CIFAR50': datasets.CIFAR100,
 }
 
 # specify available transforms.
@@ -21,16 +22,23 @@ AVAILABLE_TRANSFORMS = {
     'CIFAR10': [
         transforms.ToTensor(),
     ],
+    'CIFAR50': [
+        transforms.ToTensor(),
+    ],
     'CIFAR100': [
         transforms.ToTensor(),
     ],
     'CIFAR10_norm': [
         transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
     ],
+    'CIFAR50_norm': [
+        transforms.Normalize(mean=[0.5071, 0.4865, 0.4409], std=[0.2673, 0.2564, 0.2761])
+    ],
     'CIFAR100_norm': [
         transforms.Normalize(mean=[0.5071, 0.4865, 0.4409], std=[0.2673, 0.2564, 0.2761])
     ],
     'CIFAR10_denorm': UnNormalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616]),
+    'CIFAR50_denorm': UnNormalize(mean=[0.5071, 0.4865, 0.4409], std=[0.2673, 0.2564, 0.2761]),
     'CIFAR100_denorm': UnNormalize(mean=[0.5071, 0.4865, 0.4409], std=[0.2673, 0.2564, 0.2761]),
     'augment_from_tensor': [
         transforms.ToPILImage(),
@@ -50,4 +58,5 @@ DATASET_CONFIGS = {
     'MNIST32': {'size': 32, 'channels': 1, 'classes': 10},
     'CIFAR10': {'size': 32, 'channels': 3, 'classes': 10},
     'CIFAR100': {'size': 32, 'channels': 3, 'classes': 100},
+    'CIFAR50': {'size': 32, 'channels': 3, 'classes': 100},
 }

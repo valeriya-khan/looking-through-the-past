@@ -355,14 +355,14 @@ def run(args, verbose=False):
     # Callbacks for reporting and visualizing loss
     generator_loss_cbs = [
         cb._VAE_loss_cb(log=args.loss_log, visdom=visdom, replay=False if args.replay=="none" else True,
-                        model=model if checkattr(args, 'feedback') else generator, contexts=args.contexts,
+                        model=model if checkattr(args, 'feedback') else generator, contexts=args.contexts+1,
                         iters_per_context=args.iters if checkattr(args, 'feedback') else args.g_iters)
     ] if (train_gen or checkattr(args, 'feedback')) else [None]
     loss_cbs = [
         cb._gen_classifier_loss_cb(
             log=args.loss_log, classes=config['classes'], visdom=visdom if args.loss_log>args.iters else None,
         ) if checkattr(args, 'gen_classifier') else cb._classifier_loss_cb(
-            log=args.loss_log, visdom=visdom, model=model, contexts=args.contexts, iters_per_context=args.iters,
+            log=args.loss_log, visdom=visdom, model=model, contexts=args.contexts+1, iters_per_context=args.iters,
         )
     ] if (not checkattr(args, 'feedback')) else generator_loss_cbs
 
@@ -407,8 +407,12 @@ def run(args, verbose=False):
             train_gen_classifier if checkattr(args, 'gen_classifier') else train_cl
         )
         # -perform training
+        if args.experiment=='CIFAR50':
+            first_iters = args.iters*(len(train_datasets)-1)
+        else:
+            first_iters = args.iters
         train_fn(
-            model, train_datasets, iters=args.iters, batch_size=args.batch, baseline=baseline,
+            model, train_datasets, test_datasets, config, iters=args.iters, batch_size=args.batch,first_iters=first_iters, baseline=baseline,
             sample_cbs=sample_cbs, eval_cbs=eval_cbs, loss_cbs=loss_cbs, context_cbs=context_cbs,
             # -if using generative replay with a separate generative model:
             generator=generator, gen_iters=args.g_iters if hasattr(args, 'g_iters') else args.iters,
@@ -457,7 +461,6 @@ def run(args, verbose=False):
         start = time.time()
     accs = []
     for i in range(args.contexts):
-
         acc = evaluate.test_acc(
             model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
                 range(config['classes_per_context']*i, config['classes_per_context']*(i+1))
