@@ -38,18 +38,27 @@ def get_dataset(name, type='train', download=True, capacity=None, permutation=No
 
 #----------------------------------------------------------------------------------------------------------#
 
-def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=False, augment=False, verbose=False):
+def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=False, augment=False, verbose=False, exception=False):
     '''Load, organize and return train- and test-dataset for requested single-context experiment.'''
 
     # Get config-dict and data-sets
     config = DATASET_CONFIGS[name]
-    config['output_units'] = config['classes']
     config['normalize'] = normalize
     if normalize:
         config['denormalize'] = AVAILABLE_TRANSFORMS[name+"_denorm"]
-    trainset = get_dataset(name, type='train', dir=data_dir, verbose=verbose, normalize=normalize, augment=augment)
-    testset = get_dataset(name, type='test', dir=data_dir, verbose=verbose, normalize=normalize)
-    if name=="CIFAR50":
+    if name!="CIFAR50":
+        config['output_units'] = config['classes']
+        trainset = get_dataset(name, type='train', dir=data_dir, verbose=verbose, normalize=normalize, augment=augment)
+        testset = get_dataset(name, type='test', dir=data_dir, verbose=verbose, normalize=normalize)
+    else:
+        classes = config['classes']
+        perm_class_list = np.array(list(range(classes))) if exception else np.random.permutation(list(range(classes)))
+        target_transform = transforms.Lambda(lambda y, p=perm_class_list: int(p[y]))
+        # prepare train and test datasets with all classes
+        trainset = get_dataset(name, type="train", dir=data_dir, target_transform=target_transform,
+                               verbose=verbose, augment=augment, normalize=normalize)
+        testset = get_dataset(name, type="test", dir=data_dir, target_transform=target_transform, verbose=verbose,
+                              augment=augment, normalize=normalize)
         classes_per_first_context = 50
         labels_per_dataset_train = list(np.array(range(classes_per_first_context)))
         labels_per_dataset_test = list(np.array(range(classes_per_first_context)))
