@@ -67,7 +67,37 @@ def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=Fals
         config['output_units'] = 50   
     # Return tuple of data-sets and config-dictionary
     return (trainset, testset), config
-
+def get_all_data(name, data_dir="./store/datasets", normalize=False, augment=False, verbose=False, exception=False):
+    config = DATASET_CONFIGS[name]
+    config['normalize'] = normalize
+    if normalize:
+        config['denormalize'] = AVAILABLE_TRANSFORMS[name+"_denorm"]
+    if name!="CIFAR50":
+        config['output_units'] = config['classes']
+        trainset = get_dataset(name, type='train', dir=data_dir, verbose=verbose, normalize=normalize, augment=augment)
+        testset = get_dataset(name, type='test', dir=data_dir, verbose=verbose, normalize=normalize)
+        classes_per_first_context = 100
+        labels_per_dataset_train = list(np.array(range(classes_per_first_context)))
+        labels_per_dataset_test = list(np.array(range(classes_per_first_context)))
+        trainset = SubDataset(trainset, labels_per_dataset_train)
+        testset = SubDataset(testset, labels_per_dataset_test)
+        config['output_units'] = 100 
+    else:
+        classes = config['classes']
+        perm_class_list = np.array(list(range(classes))) if exception else np.random.permutation(list(range(classes)))
+        target_transform = transforms.Lambda(lambda y, p=perm_class_list: int(p[y]))
+        # prepare train and test datasets with all classes
+        trainset = get_dataset(name, type="train", dir=data_dir, target_transform=target_transform,
+                               verbose=verbose, augment=augment, normalize=normalize)
+        testset = get_dataset(name, type="test", dir=data_dir, target_transform=target_transform, verbose=verbose,
+                              augment=augment, normalize=normalize)
+        classes_per_first_context = 50
+        labels_per_dataset_train = list(np.array(range(classes_per_first_context)))
+        labels_per_dataset_test = list(np.array(range(classes_per_first_context)))
+        trainset = SubDataset(trainset, labels_per_dataset_train)
+        testset = SubDataset(testset, labels_per_dataset_test)
+        config['output_units'] = 50  
+    return (trainset, testset), config 
 #----------------------------------------------------------------------------------------------------------#
 
 def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config=False, verbose=False,
