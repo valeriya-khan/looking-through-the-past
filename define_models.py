@@ -130,6 +130,7 @@ def define_rtf_classifier(args, config, device, depth=0):
         contexts=args.contexts if hasattr(args, 'contexts') else None,
         scenario=args.scenario if hasattr(args, 'scenario') else None, device=device,
         # -classifier
+        experiment=args.experiment if hasattr(args, 'scenario') else None,
         classifier=True,
     ).to(device)
     # -return model

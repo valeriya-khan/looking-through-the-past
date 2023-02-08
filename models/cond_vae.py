@@ -23,7 +23,7 @@ class CondVAE(ContinualLearner):
                  prior="standard", z_dim=20, per_class=False, n_modes=1,
                  # -decoder
                  recon_loss='BCE', network_output="sigmoid", deconv_type="standard",
-                 dg_gates=False, dg_type="context", dg_prop=0., contexts=5, scenario="task", device='cuda',
+                 dg_gates=False, dg_type="context", dg_prop=0., contexts=5, scenario="task",experiment="CIFAR100", device='cuda',
                  # -classifer
                  classifier=True, **kwargs):
         '''Class for variational auto-encoder (VAE) models.'''
@@ -48,6 +48,7 @@ class CondVAE(ContinualLearner):
         self.dg_gates = dg_gates if (dg_prop is not None) and dg_prop>0. else False
         self.gate_size = (contexts if dg_type=="context" else classes) if self.dg_gates else 0
         self.scenario = scenario
+        self.experiment = experiment
 
         # Optimizer (needs to be set before training starts))
         self.optimizer = None

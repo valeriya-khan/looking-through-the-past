@@ -139,7 +139,12 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             # -for Class-IL scenario, the active classes are determined by [model.neg_samples]
             if model.neg_samples=="all-so-far":
                 # --> one <list> with active classes of all contexts so far
-                active_classes = list(range(model.classes_per_context * context))
+                if model.experiment!="CIFAR50":
+                    active_classes = list(range(model.classes_per_context * context))
+                elif context==1:
+                    active_classes = list(range(50))
+                else:
+                    active_classes = list(range(50 + model.classes_per_context * (context-1)))
             elif model.neg_samples=="all":
                 #--> always all classes are active
                 active_classes = None
@@ -300,7 +305,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 else:
                     # -which classes are allowed to be generated? (relevant if conditional generator / decoder-gates)
                     allowed_classes = None if model.scenario=="domain" else list(
-                        range(model.classes_per_context*(context-1))
+                        range(50 + model.classes_per_context*(context-2))
                     )
                     # -which contexts are allowed to be generated? (only relevant if "Domain-IL" with context-gates)
                     allowed_domains = list(range(context-1))
@@ -318,7 +323,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     with torch.no_grad():
                         scores_ = previous_model.classify(x_, no_prototypes=True)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
-                        scores_ = scores_[:, :(model.classes_per_context * (context - 1))]
+                        scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
                         # -> if [scores_] is not same length as [x_], zero probs are added in [loss_fn_kd]-function
                     # -also get the 'hard target'
                     _, y_ = torch.max(scores_, dim=1)
@@ -355,7 +360,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             if batch_index <= iters_to_use:
 
                 # Train the main model with this batch
-                loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./context,
+                loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1. if context==1 else 1./(context-1+5),
                                                 contexts_=context_used, active_classes=active_classes, context=context)
 
                 # Update running parameter importance estimates in W (needed for SI)
