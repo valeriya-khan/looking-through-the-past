@@ -141,7 +141,7 @@ class CondVAE(ContinualLearner):
         # Flags whether parts of the network are frozen (so they can be set to evaluation mode during training)
         self.convE.frozen = False
         self.fcE.frozen = False
-
+        self.param_list = [self.convE.named_parameters, self.fcE.named_parameters, self.classifier.named_parameters]
 
 
     ##------ NAMES --------##
