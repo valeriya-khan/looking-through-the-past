@@ -97,7 +97,7 @@ class CondVAE(ContinualLearner):
 
         ##>----Classifier----<##
         if classifier:
-            self.classifier = fc_layer(mlp_output_size, classes, excit_buffer=True, nl='none')
+            self.classifier = fc_layer(z_dim, classes, excit_buffer=True, nl='none')
 
         ##>----Decoder (= p[x|z])----<##
         out_nl = True if fc_layers > 1 else (True if (self.depth > 0 and not no_fnl) else False)
@@ -209,9 +209,9 @@ class CondVAE(ContinualLearner):
     def classify(self, x, allowed_classes=None, **kwargs):
         '''For input [x] (image/"intermediate" features), return predicted "scores"/"logits" for [allowed_classes].'''
         if hasattr(self, "classifier"):
-            image_features = self.flatten(self.convE(x))
-            hE = self.fcE(image_features)
-            scores = self.classifier(hE)
+            # image_features = self.flatten(self.convE(x))
+            # hE = self.fcE(image_features)
+            scores = self.classifier(x)
             return scores if (allowed_classes is None) else scores[:, allowed_classes]
         else:
             return None
@@ -262,7 +262,7 @@ class CondVAE(ContinualLearner):
         gate_input = gate_input if self.dg_gates else None
         x_recon = self.decode(z, gate_input=gate_input)
         # -classify
-        y_hat = self.classifier(hE) if hasattr(self, "classifier") else None
+        y_hat = self.classifier(z) if hasattr(self, "classifier") else None
         # -return
         return (x_recon, y_hat, mu, logvar, z) if full else x_recon
 
@@ -489,7 +489,7 @@ class CondVAE(ContinualLearner):
         return variatL
 
 
-    def loss_function(self, x, y, x_recon, y_hat, scores, mu, z, logvar=None, allowed_classes=None, batch_weights=None):
+    def loss_function(self, x, y, x_recon, y_hat, scores, mu, z, logvar=None,mu_dist=None, logvar_dist=None, allowed_classes=None, batch_weights=None):
         '''Calculate and return various losses that could be used for training and/or evaluating the model.
 
         INPUT:  - [x]           <4D-tensor> original image
@@ -554,15 +554,27 @@ class CondVAE(ContinualLearner):
                                     weights=batch_weights)  #--> summing over classes & averaging over batch in function
         else:
             distilL = torch.tensor(0., device=self._device())
+            
+        if mu_dist is not None and mu is not None:
+            muDistilL = self.calculate_recon_loss(x=mu.view(batch_size, -1),x_recon=mu_dist.view(batch_size, -1), average=True)
+            muDistilL = lf.weighted_average(muDistilL, weights=batch_weights, dim=0)  
+        else:
+            muDistilL = torch.tensor(0., device=self._device())
+            
+        if logvar_dist is not None and logvar is not None:
+            logvarDistilL = self.calculate_recon_loss(x=logvar.view(batch_size, -1),x_recon=logvar_dist.view(batch_size, -1), average=True)
+            logvarDistilL = lf.weighted_average(logvarDistilL, weights=batch_weights, dim=0)  
+        else:
+            logvarDistilL = torch.tensor(0., device=self._device())
 
         # Return a tuple of the calculated losses
-        return reconL, variatL, predL, distilL
+        return reconL, variatL, predL, distilL, muDistilL, logvarDistilL
 
 
 
     ##------ TRAINING FUNCTIONS --------##
 
-    def train_a_batch(self, x, y=None, x_=None, y_=None, scores_=None, contexts_=None, rnt=0.5,
+    def train_a_batch(self, x, y=None, x_=None, y_=None, scores_=None, mu_dist = None, logvar_dist=None, contexts_=None, rnt=0.5,
                       active_classes=None, context=1, **kwargs):
         '''Train model for one batch ([x],[y]), possibly supplemented with replayed data ([x_],[y_]).
 
@@ -608,7 +620,7 @@ class CondVAE(ContinualLearner):
                     y_hat = y_hat[:, class_entries]
 
             # Calculate all losses
-            reconL, variatL, predL, _ = self.loss_function(
+            reconL, variatL, predL, _, _, _ = self.loss_function(
                 x=x, y=y, x_recon=recon_batch, y_hat=y_hat, scores=None, mu=mu, z=z, logvar=logvar,
                 allowed_classes=class_entries if active_classes is not None else None
             ) #--> [allowed_classes] will be used only if [y] is not provided
@@ -639,6 +651,8 @@ class CondVAE(ContinualLearner):
             variatL_r = [torch.tensor(0., device=self._device())]*n_replays
             predL_r = [torch.tensor(0., device=self._device())]*n_replays
             distilL_r = [torch.tensor(0., device=self._device())]*n_replays
+            muDistilL_r = [torch.tensor(0., device=self._device())]*n_replays
+            logvarDistilL_r = [torch.tensor(0., device=self._device())]*n_replays
 
             # Run model (if [x_] is not a list with separate replay per context and there is no context-specific mask)
             if (not type(x_)==list) and (not (self.dg_gates and PerContext)):
@@ -694,14 +708,14 @@ class CondVAE(ContinualLearner):
                 ) else y_hat_all[:, active_classes[replay_id]]
 
                 # Calculate all losses
-                reconL_r[replay_id],variatL_r[replay_id],predL_r[replay_id],distilL_r[replay_id] = self.loss_function(
+                reconL_r[replay_id],variatL_r[replay_id],predL_r[replay_id],distilL_r[replay_id],muDistilL_r[replay_id],logvarDistilL_r[replay_id] = self.loss_function(
                     x=x_temp_, y=y_[replay_id] if (y_ is not None) else None, x_recon=recon_batch, y_hat=y_hat,
-                    scores=scores_[replay_id] if (scores_ is not None) else None, mu=mu, z=z, logvar=logvar,
+                    scores=scores_[replay_id] if (scores_ is not None) else None, mu=mu, z=z, logvar=logvar,mu_dist=mu_dist, logvar_dist=logvar_dist,
                     allowed_classes=active_classes[replay_id] if active_classes is not None else None,
                 )
 
                 # Weigh losses as requested
-                loss_replay[replay_id] = self.lamda_rcl*reconL_r[replay_id] + self.lamda_vl*variatL_r[replay_id]
+                loss_replay[replay_id] = self.lamda_rcl*reconL_r[replay_id] + self.lamda_vl*variatL_r[replay_id]+muDistilL_r[replay_id]+logvarDistilL_r[replay_id]
                 if self.replay_targets=="hard":
                     loss_replay[replay_id] += self.lamda_pl*predL_r[replay_id]
                 elif self.replay_targets=="soft":
