@@ -333,7 +333,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         mu, logvar, hE, hidden_x = previous_model.encode(x_)
                         scores_ = previous_model.classify(mu, no_prototypes=True)
                         _, label = torch.max(scores_, dim=1)
-                        _,_,mu_dist,logvar_dist,_ = previous_model.forward(x_, full=True, gate_input = label)
+                        _,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True, gate_input = label)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
                         if model.experiment=="CIFAR50":
                             scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
