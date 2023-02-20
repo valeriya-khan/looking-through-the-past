@@ -352,7 +352,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                             # print("darkneeeeeeeeeesssssssssssss")
                             mu, logvar, hE, hidden_x = previous_model.encode(x_)
                             all_scores_ = previous_model.classify(mu, no_prototypes=True)
-                            _,_,mu_dist,logvar_dist,_ = previous_model.forward(x_, full=True)
+                            _,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True)
                     for context_id in range(context-1):
                         # -if there is a context-mask (i.e., XdG), obtain predicted scores for each context separately
                         if previous_model.mask_dict is not None:
