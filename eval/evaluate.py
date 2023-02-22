@@ -55,11 +55,9 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, verbose=True, conte
         # -evaluate model (if requested, only on [allowed_classes])
         with torch.no_grad():
             if checkattr(model, 'stream_classifier'):
-                mu, logvar, hE, hidden_x = model.encode(x.to(device))
-                scores = model.classify(mu.to(device), context=context_tensor)
+                scores = model.classify(x.to(device), context=context_tensor)
             else:
-                mu, logvar, hE, hidden_x = model.encode(x.to(device))
-                scores = model.classify(mu.to(device), allowed_classes=allowed_classes)
+                scores = model.classify(x.to(device), allowed_classes=allowed_classes)
         _, predicted = torch.max(scores.cpu(), 1)
         if model.prototypes and max(predicted).item() >= model.classes:
             # -in case of Domain-IL (or Task-IL + singlehead), collapse all corresponding domains to same class

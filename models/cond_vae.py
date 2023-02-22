@@ -97,7 +97,7 @@ class CondVAE(ContinualLearner):
 
         ##>----Classifier----<##
         if classifier:
-            self.classifier = fc_layer(z_dim, classes, excit_buffer=True, nl='none')
+            self.classifier = fc_layer(mlp_output_size, classes, excit_buffer=True, nl='none')
 
         ##>----Decoder (= p[x|z])----<##
         out_nl = True if fc_layers > 1 else (True if (self.depth > 0 and not no_fnl) else False)
@@ -209,9 +209,9 @@ class CondVAE(ContinualLearner):
     def classify(self, x, allowed_classes=None, **kwargs):
         '''For input [x] (image/"intermediate" features), return predicted "scores"/"logits" for [allowed_classes].'''
         if hasattr(self, "classifier"):
-            # image_features = self.flatten(self.convE(x))
-            # hE = self.fcE(image_features)
-            scores = self.classifier(x)
+            image_features = self.flatten(self.convE(x))
+            hE = self.fcE(image_features)
+            scores = self.classifier(hE)
             return scores if (allowed_classes is None) else scores[:, allowed_classes]
         else:
             return None
@@ -263,7 +263,7 @@ class CondVAE(ContinualLearner):
         x_recon = self.decode(z, gate_input=gate_input)
         mu_recon, logvar_recon, _, _ = self.encode(x_recon)
         # -classify
-        y_hat = self.classifier(z) if hasattr(self, "classifier") else None
+        y_hat = self.classifier(hE) if hasattr(self, "classifier") else None
         # -return
         return (x_recon, y_hat, mu, logvar, mu_recon, logvar_recon, z) if full else x_recon
 

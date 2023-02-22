@@ -226,9 +226,8 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 binary_distillation = hasattr(model, "binaryCE") and model.binaryCE and model.binaryCE_distill
                 if binary_distillation and model.scenario in ("class", "all") and (previous_model is not None):
                     with torch.no_grad():
-                        mu, logvar, hE, hidden_x = previous_model.encode(x)
                         scores = previous_model.classify(
-                            mu, no_prototypes=True
+                            x, no_prototypes=True
                         )[:, :(model.classes_per_context * (context - 1))]
                 else:
                     scores = None
@@ -249,7 +248,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     # If required, get target scores (i.e, [scores_])         -- using previous model, with no_grad()
                     if (model.replay_targets=="soft"):
                         with torch.no_grad():
-                            mu, logvar, hE, hidden_x = previous_model.encode(x_)
                             scores_ = previous_model.classify(x_, no_prototypes=True)
                         if model.scenario=="class" and model.neg_samples=="all-so-far":
                             scores_ = scores_[:, :(model.classes_per_context*(context-1))]
@@ -274,8 +272,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         scores_ = list()
                         for context_id in range(up_to_context):
                             with torch.no_grad():
-                                mu, logvar, hE, hidden_x = previous_model.encode(x_)
-                                scores_temp = previous_model.classify(mu[context_id], no_prototypes=True)
+                                scores_temp = previous_model.classify(x_[context_id], no_prototypes=True)
                             if active_classes is not None:
                                 scores_temp = scores_temp[:, active_classes[context_id]]
                             scores_.append(scores_temp)
@@ -330,8 +327,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     # -if replay does not need to be evaluated separately for each context
                     with torch.no_grad():
                         # print("heloooooooooooooooooooooooooooo")
-                        mu, logvar, hE, hidden_x = previous_model.encode(x_)
-                        scores_ = previous_model.classify(mu, no_prototypes=True)
+                        scores_ = previous_model.classify(x_, no_prototypes=True)
                         _, label = torch.max(scores_, dim=1)
                         _,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True, gate_input = label)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
@@ -350,8 +346,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     if previous_model.mask_dict is None and not type(x_)==list:
                         with torch.no_grad():
                             # print("darkneeeeeeeeeesssssssssssss")
-                            mu, logvar, hE, hidden_x = previous_model.encode(x_)
-                            all_scores_ = previous_model.classify(mu, no_prototypes=True)
+                            all_scores_ = previous_model.classify(x_, no_prototypes=True)
                             _,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True)
                     for context_id in range(context-1):
                         # -if there is a context-mask (i.e., XdG), obtain predicted scores for each context separately
@@ -359,8 +354,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                             previous_model.apply_XdGmask(context=context_id+1)
                         if previous_model.mask_dict is not None or type(x_)==list:
                             with torch.no_grad():
-                                mu, logvar, hE, hidden_x = previous_model.encode(x_)
-                                all_scores_ = previous_model.classify(mu[context_id] if type(x_)==list else x_,
+                                all_scores_ = previous_model.classify(x_[context_id] if type(x_)==list else x_,
                                                                       no_prototypes=True)
                         temp_scores_ = all_scores_
                         if active_classes is not None:
@@ -796,16 +790,14 @@ def train_on_stream(model, datastream, iters=2000, loss_cbs=list(), eval_cbs=lis
             (x_, y_, c_) = previous_model.sample_from_buffer(x.shape[0])
             if model.replay_targets=='soft':
                 with torch.no_grad():
-                    mu, logvar, hE, hidden_x = previous_model.encode(x_)
-                    scores_ = previous_model.classify(mu, c_, no_prototypes=True)
+                    scores_ = previous_model.classify(x_, c_, no_prototypes=True)
         elif hasattr(model, 'replay_mode') and model.replay_mode=='current' and previous_model is not None:
             # ... using the data from the current batch (as in LwF)
             x_ = x
             if c is not None:
                 c_ = previous_model.sample_contexts(x_.shape[0]).to(model._device())
             with torch.no_grad():
-                mu, logvar, hE, hidden_x = previous_model.encode(x)
-                scores_ = previous_model.classify(mu, c_, no_prototypes=True)
+                scores_ = previous_model.classify(x, c_, no_prototypes=True)
                 _, y_ = torch.max(scores_, dim=1)
         # -only keep [y_] or [scores_], depending on whether replay is with 'hard' or 'soft' targets
         y_ = y_ if (hasattr(model, 'replay_targets') and model.replay_targets == "hard") else None
