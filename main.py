@@ -462,7 +462,7 @@ def run(args, verbose=False):
         start = time.time()
     accs = []
     for i in range(args.contexts):
-        acc = evaluate.test_acc(
+        acc, _, _ = evaluate.test_acc(
             model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
                 range(config['classes_per_context']*i, config['classes_per_context']*(i+1))
             ) if (args.scenario=="task" and not checkattr(args, 'singlehead')) else None,
@@ -494,7 +494,7 @@ def run(args, verbose=False):
     if (feature_extractor is not None) and args.depth>0:
         testset = utils.preprocess(feature_extractor, testset, config, batch=args.batch,
                                          message='<TESTSET> ')
-    acc = evaluate.test_acc(
+    acc, _, _ = evaluate.test_acc(
             model, testset[0], verbose=False, test_size=None, context_id=None, allowed_classes=None,
         )
     print("Accuracy over all classes is ", acc)
