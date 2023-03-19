@@ -473,31 +473,7 @@ def run(args, verbose=False):
     average_accs = sum(accs) / args.contexts
     if verbose:
         print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(args.contexts, average_accs))
-    # -write out to text file
-    # (trainset, testset), config = get_all_data(
-    #     name="CIFAR100", data_dir=args.d_dir, verbose=True,
-    #     normalize = utils.checkattr(args, "normalize"), augment = utils.checkattr(args, "augment"),exception=(args.seed==0),
-    # )
-    (trainset, testset), config = get_context_set(
-        name="CIFAR100", scenario=args.scenario, contexts=1, data_dir=args.d_dir,
-        normalize=checkattr(args, "normalize"), verbose=verbose, exception=(args.seed==0),
-        singlehead=checkattr(args, 'singlehead'), train_set_per_class=checkattr(args, 'gen_classifier')
-    )
-    # (_, testset), config = get_context_set(
-    #     name="CIFAR100", scenario=args.scenario, contexts=1, data_dir=args.d_dir,
-    #     normalize=checkattr(args, "normalize"), verbose=verbose, exception=(args.seed==0),
-    #     singlehead=checkattr(args, 'singlehead'), train_set_per_class=True
-    # )
-    # test_loader = utils.get_data_loader(testset, batch_size=args.batch, cuda=cuda, drop_last=True)
-    config['size'] = feature_extractor.conv_out_size
-    config['channels'] = feature_extractor.conv_out_channels
-    if (feature_extractor is not None) and args.depth>0:
-        testset = utils.preprocess(feature_extractor, testset, config, batch=args.batch,
-                                         message='<TESTSET> ')
-    acc, _, _ = evaluate.test_acc(
-            model, testset[0], verbose=False, test_size=None, context_id=None, allowed_classes=None,
-        )
-    print("Accuracy over all classes is ", acc)
+        
     if args.time:
         inference_time = time.time() - start
         time_file = open("{}/time-{}.txt".format(args.r_dir, param_stamp), 'w')
@@ -505,11 +481,11 @@ def run(args, verbose=False):
         time_file.close()
         if verbose and args.time:
             print("Total inference time = {:.1f} seconds\n".format(inference_time))
-    file_name = "{}/acc-{}{}.txt".format(args.r_dir, param_stamp,
-                                         "--S{}".format(args.eval_s) if checkattr(args, 'gen_classifier') else "")
-    output_file = open(file_name, 'w')
+    # file_name = "{}/acc-{}{}.txt".format(args.r_dir, param_stamp,
+    #                                      "--S{}".format(args.eval_s) if checkattr(args, 'gen_classifier') else "")
+    # output_file = open(file_name, 'w')
     # output_file.write('{}\n'.format(average_accs))
-    output_file.close()
+    # output_file.close()
 
     #-------------------------------------------------------------------------------------------------#
 
