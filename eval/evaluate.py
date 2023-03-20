@@ -42,7 +42,7 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, gen_data=None, verb
         allowed_classes = None
 
     # Loop over batches in [dataset]
-    data_loader = get_data_loader(dataset, batch_size, cuda=cuda)
+    data_loader = get_data_loader(dataset, batch_size, cuda=cuda, shuffle=False)
     total_tested = total_correct = 0
     generated_data = []
     # recon_loss = None

@@ -26,7 +26,7 @@ def checkattr(args, attr):
 ## Data-handling functions ##
 #############################
 
-def get_data_loader(dataset, batch_size, cuda=False, drop_last=False, augment=False):
+def get_data_loader(dataset, batch_size, cuda=False, drop_last=False, augment=False, shuffle = True):
     '''Return <DataLoader>-object for the provided <DataSet>-object [dataset].'''
 
     # If requested, make copy of original dataset to add augmenting transform (without altering original dataset)
@@ -38,7 +38,7 @@ def get_data_loader(dataset, batch_size, cuda=False, drop_last=False, augment=Fa
 
     # Create and return the <DataLoader>-object
     return DataLoader(
-        dataset_, batch_size=batch_size, shuffle=True, drop_last=drop_last,
+        dataset_, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
         **({'num_workers': 0, 'pin_memory': True} if cuda else {})
     )
 
