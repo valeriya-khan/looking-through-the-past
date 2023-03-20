@@ -139,7 +139,12 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             # -for Class-IL scenario, the active classes are determined by [model.neg_samples]
             if model.neg_samples=="all-so-far":
                 # --> one <list> with active classes of all contexts so far
-                active_classes = list(range(model.classes_per_context * context))
+                if model.experiment!="CIFAR50":
+                    active_classes = list(range(model.classes_per_context * context))
+                elif context==1:
+                    active_classes = list(range(50))
+                else:
+                    active_classes = list(range(50 + model.classes_per_context * (context-1)))
             elif model.neg_samples=="all":
                 #--> always all classes are active
                 active_classes = None
@@ -231,7 +236,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             #####-----REPLAYED BATCH-----#####
             if not ReplayStoredData and not ReplayGeneratedData and not ReplayCurrentData:
                 x_ = y_ = scores_ = context_used = None   #-> if no replay
-
+                gen_data = []
             ##-->> Replay of stored data <<--##
             if ReplayStoredData:
                 scores_ = context_used = None
@@ -299,9 +304,14 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         context_used.append(x_temp_[2])
                 else:
                     # -which classes are allowed to be generated? (relevant if conditional generator / decoder-gates)
-                    allowed_classes = None if model.scenario=="domain" else list(
-                        range(model.classes_per_context*(context-1))
-                    )
+                    if model.experiment=="CIFAR50":
+                        allowed_classes = None if model.scenario=="domain" else list(
+                            range(50 + model.classes_per_context*(context-2))
+                        )            
+                    else:
+                        allowed_classes = None if model.scenario=="domain" else list(
+                            range(model.classes_per_context*(context-1))
+                        )                 
                     # -which contexts are allowed to be generated? (only relevant if "Domain-IL" with context-gates)
                     allowed_domains = list(range(context-1))
                     # -generate inputs representative of previous contexts
@@ -318,7 +328,10 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     with torch.no_grad():
                         scores_ = previous_model.classify(x_, no_prototypes=True)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
-                        scores_ = scores_[:, :(model.classes_per_context * (context - 1))]
+                        if model.experiment=="CIFAR50":
+                            scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
+                        else:
+                            scores_ = scores_[:, :(model.classes_per_context * (context - 1))]
                         # -> if [scores_] is not same length as [x_], zero probs are added in [loss_fn_kd]-function
                     # -also get the 'hard target'
                     _, y_ = torch.max(scores_, dim=1)
@@ -488,14 +501,28 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
         accs = []
+        
+        rec_losses = []
         for i in range(context):
-            acc = evaluate.test_acc(
-                model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
-            )
+            if len(gen_data)<i+1:                    
+                acc, gen, rec_loss = evaluate.test_acc(
+                    model, test_datasets[i], gen_data=None,verbose=False, test_size=None, context_id=i, allowed_classes=None
+                )
+                gen_data.append(gen)
+            else:
+                acc, gen, rec_loss = evaluate.test_acc(
+                    model, test_datasets[i], gen_data=gen_data[i],verbose=False, test_size=None, context_id=i, allowed_classes=None
+                )
+                gen_data[i] = gen
+            rec_losses.append(rec_loss)
             accs.append(acc)
             print(" - Context {}: {:.4f}".format(i + 1, acc))
+            print(f"Reconstruction loss for context {i+1}: {rec_loss}")
         average_accs = sum(accs) / (context)
         print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        
+        average_rec_loss = sum(rec_losses)/context
+        print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
 
         if model.label == "VAE" or model.label == "CondVAE":
             rec_losses = []

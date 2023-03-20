@@ -58,7 +58,7 @@ def run(args, verbose=False):
         print("\n\n " +' LOAD DATA '.center(70, '*'))
     (trainset, testset), config = get_singlecontext_datasets(
         name=args.experiment, data_dir=args.d_dir, verbose=True,
-        normalize = utils.checkattr(args, "normalize"), augment = utils.checkattr(args, "augment"),
+        normalize = utils.checkattr(args, "normalize"), augment = utils.checkattr(args, "augment"),exception=(args.seed==0),
     )
 
     # Specify "data-loader" (among others for easy random shuffling and 'batchifying')

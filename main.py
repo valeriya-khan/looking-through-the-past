@@ -10,7 +10,7 @@ import utils
 from utils import checkattr
 from param_stamp import get_param_stamp, get_param_stamp_from_args, visdom_name
 from eval import evaluate, callbacks as cb
-from data.load import get_context_set
+from data.load import get_context_set, get_singlecontext_datasets,get_all_data
 from train import train_cl, train_fromp, train_gen_classifier
 from models.cl.continual_learner import ContinualLearner
 from models.cl.memory_buffer import MemoryBuffer
@@ -355,14 +355,14 @@ def run(args, verbose=False):
     # Callbacks for reporting and visualizing loss
     generator_loss_cbs = [
         cb._VAE_loss_cb(log=args.loss_log, visdom=visdom, replay=False if args.replay=="none" else True,
-                        model=model if checkattr(args, 'feedback') else generator, contexts=args.contexts+1,
+                        model=model if checkattr(args, 'feedback') else generator, contexts=args.contexts,
                         iters_per_context=args.iters if checkattr(args, 'feedback') else args.g_iters)
     ] if (train_gen or checkattr(args, 'feedback')) else [None]
     loss_cbs = [
         cb._gen_classifier_loss_cb(
             log=args.loss_log, classes=config['classes'], visdom=visdom if args.loss_log>args.iters else None,
         ) if checkattr(args, 'gen_classifier') else cb._classifier_loss_cb(
-            log=args.loss_log, visdom=visdom, model=model, contexts=args.contexts+1, iters_per_context=args.iters,
+            log=args.loss_log, visdom=visdom, model=model, contexts=args.contexts, iters_per_context=args.iters,
         )
     ] if (not checkattr(args, 'feedback')) else generator_loss_cbs
 
@@ -408,7 +408,8 @@ def run(args, verbose=False):
         )
         # -perform training
         if args.experiment=='CIFAR50':
-            first_iters = args.iters*(len(train_datasets)-1)
+            # first_iters = args.iters*(len(train_datasets)-1)
+            first_iters = 10000
         else:
             first_iters = args.iters
         train_fn(
@@ -461,7 +462,7 @@ def run(args, verbose=False):
         start = time.time()
     accs = []
     for i in range(args.contexts):
-        acc = evaluate.test_acc(
+        acc, _, _ = evaluate.test_acc(
             model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
                 range(config['classes_per_context']*i, config['classes_per_context']*(i+1))
             ) if (args.scenario=="task" and not checkattr(args, 'singlehead')) else None,
@@ -472,7 +473,7 @@ def run(args, verbose=False):
     average_accs = sum(accs) / args.contexts
     if verbose:
         print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(args.contexts, average_accs))
-    # -write out to text file
+        
     if args.time:
         inference_time = time.time() - start
         time_file = open("{}/time-{}.txt".format(args.r_dir, param_stamp), 'w')
@@ -480,11 +481,11 @@ def run(args, verbose=False):
         time_file.close()
         if verbose and args.time:
             print("Total inference time = {:.1f} seconds\n".format(inference_time))
-    file_name = "{}/acc-{}{}.txt".format(args.r_dir, param_stamp,
-                                         "--S{}".format(args.eval_s) if checkattr(args, 'gen_classifier') else "")
-    output_file = open(file_name, 'w')
-    output_file.write('{}\n'.format(average_accs))
-    output_file.close()
+    # file_name = "{}/acc-{}{}.txt".format(args.r_dir, param_stamp,
+    #                                      "--S{}".format(args.eval_s) if checkattr(args, 'gen_classifier') else "")
+    # output_file = open(file_name, 'w')
+    # output_file.write('{}\n'.format(average_accs))
+    # output_file.close()
 
     #-------------------------------------------------------------------------------------------------#
 
@@ -506,7 +507,7 @@ def run(args, verbose=False):
             if not checkattr(args, 'gen_classifier'):
                 for i in range(args.contexts):
                     evaluate.show_reconstruction(model if checkattr(args, 'feedback') else generator,
-                                                 test_datasets[i], config, pdf=pp, context=i+1)
+                                                 test_datasets[i], config, pdf=pp, context=i)
         figure_list = []  #-> create list to store all figures to be plotted
         # -generate all figures (and store them in [figure_list])
         plot_list = []

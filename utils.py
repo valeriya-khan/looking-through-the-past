@@ -214,6 +214,7 @@ def preprocess(feature_extractor, dataset_list, config, batch=128, message='<PRE
     new_dataset_list = []
     progress_bar = tqdm.tqdm(total=len(dataset_list))
     progress_bar.set_description('{} | dataset {}/{} |'.format(message, 0, len(dataset_list)))
+    # print(len(dataset_list))
     for dataset_id in range(len(dataset_list)):
         loader = get_data_loader(dataset_list[dataset_id], batch_size=batch, drop_last=False,
                                  cuda=feature_extractor._is_on_cuda())
@@ -221,8 +222,11 @@ def preprocess(feature_extractor, dataset_list, config, batch=128, message='<PRE
         all_features = torch.empty((len(loader.dataset), config['channels'], config['size'], config['size']))
         all_labels = torch.empty((len(loader.dataset)), dtype=torch.long)
         count = 0
+        # print(all_features.shape)
         for x, y in loader:
+            # print(x.shape)
             x = feature_extractor(x.to(device)).cpu()
+            # print(x.shape)
             all_features[count:(count+x.shape[0])] = x
             all_labels[count:(count+x.shape[0])] = y
             count += x.shape[0]
