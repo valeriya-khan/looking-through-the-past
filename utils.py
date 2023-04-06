@@ -9,7 +9,7 @@ from torch import nn
 from torch.utils.data import DataLoader,TensorDataset
 from models.fc import excitability_modules as em
 from data.available import AVAILABLE_TRANSFORMS
-
+import logging
 ##-------------------------------------------------------------------------------------------------------------------##
 
 ######################
@@ -85,9 +85,9 @@ def save_checkpoint(model, model_dir, verbose=True, name=None):
     try:
         torch.save(checkpoint, path)
         if verbose:
-            print(' --> saved model {name} to {path}'.format(name=name, path=model_dir))
+            logging.info(' --> saved model {name} to {path}'.format(name=name, path=model_dir))
     except OSError:
-        print(" --> saving model '{}' failed!!".format(name))
+        logging.info(" --> saving model '{}' failed!!".format(name))
 
 def load_checkpoint(model, model_dir, verbose=True, name=None, strict=True):
     '''Load saved state (in form of dictionary) at [model_dir] (if name is None, use "model.name") to [model].'''
@@ -101,7 +101,7 @@ def load_checkpoint(model, model_dir, verbose=True, name=None, strict=True):
         model.mask_dict = checkpoint['mask_dict']
     # notify that we succesfully loaded the checkpoint
     if verbose:
-        print(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
+        logging.info(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
 
 ##-------------------------------------------------------------------------------------------------------------------##
 
@@ -123,18 +123,18 @@ def count_parameters(model, verbose=True):
         else:
             fixed_params += n_params
     if verbose:
-        print( "--> this network has {} parameters (~{} million)"
+        logging.info( "--> this network has {} parameters (~{} million)"
               .format(total_params, round(total_params / 1000000, 1)))
-        print("       of which: - learnable: {} (~{} million)".format(learnable_params,
+        logging.info("       of which: - learnable: {} (~{} million)".format(learnable_params,
                                                                      round(learnable_params / 1000000, 1)))
-        print("                 - fixed: {} (~{} million)".format(fixed_params, round(fixed_params / 1000000, 1)))
+        logging.info("                 - fixed: {} (~{} million)".format(fixed_params, round(fixed_params / 1000000, 1)))
     return total_params, learnable_params, fixed_params
 
 def print_model_info(model, message=None):
     '''Print information on [model] onto the screen.'''
-    print(55*"-" if message is None else ' {} '.format(message).center(55, '-'))
-    print(model)
-    print(55*"-")
+    logging.info(55*"-" if message is None else ' {} '.format(message).center(55, '-'))
+    logging.info(model)
+    logging.info(55*"-")
     _ = count_parameters(model)
 
 ##-------------------------------------------------------------------------------------------------------------------##

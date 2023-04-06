@@ -4,7 +4,7 @@ from visual import visual_plt
 from visual import visual_visdom
 from utils import get_data_loader,checkattr
 from models.utils import loss_functions as lf
-
+import logging
 ####--------------------------------------------------------------------------------------------------------------####
 
 ####-----------------------------####
@@ -92,8 +92,8 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, gen_data=None, verb
     # Set model back to its initial mode, print result on screen (if requested) and return it
     model.train(mode=mode)
     if verbose:
-        print('=> accuracy: {:.3f}'.format(accuracy))
-    return accuracy, generated_data, degrad
+        logging.info('=> accuracy: {:.3f}'.format(accuracy))
+    return accuracy
 
 def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=True, context_id=None, allowed_classes=None,
              no_context_mask=False, **kwargs):
@@ -177,7 +177,7 @@ def test_all_so_far(model, datasets, current_context, iteration, test_size=None,
 
     # Print results on screen
     if verbose:
-        print(' => ave accuracy: {:.3f}'.format(average_precs))
+        logging.info(' => ave accuracy: {:.3f}'.format(average_precs))
 
     # Add results to [plotting_dict]
     if plotting_dict is not None:

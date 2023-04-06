@@ -1,7 +1,7 @@
 from data.load import get_context_set
 import define_models as define
 from utils import checkattr
-
+import logging
 
 def visdom_name(args):
     '''Get name for graph in visdom from [args].'''
@@ -73,12 +73,12 @@ def get_param_stamp(args, model_name, verbose=True, replay_model_name=None, feat
         aug="+" if hasattr(args, "augment") and args.augment else "", multi_n=multi_n_stamp
     )
     if verbose:
-        print(" --> problem:       "+problem_stamp)
+        logging.info(" --> problem:       "+problem_stamp)
 
     # -for model
     model_stamp = model_name if feature_extractor_name is None else "H{}--{}".format(feature_extractor_name, model_name)
     if verbose:
-        print(" --> model:         "+model_stamp)
+        logging.info(" --> model:         "+model_stamp)
 
     # -for training settings
     if checkattr(args, "pre_convE") and hasattr(args, 'depth') and args.depth>0:
@@ -102,7 +102,7 @@ def get_param_stamp(args, model_name, verbose=True, replay_model_name=None, feat
         ) else "",
     )
     if verbose:
-        print(" --> train-params:  " + train_stamp)
+        logging.info(" --> train-params:  " + train_stamp)
 
     # -for parameter regularization
     param_reg_stamp = ""
@@ -138,7 +138,7 @@ def get_param_stamp(args, model_name, verbose=True, replay_model_name=None, feat
     if checkattr(args, 'xdg') and args.gating_prop>0:
         xdg_stamp = "--XdG{}".format(args.gating_prop)
         if verbose:
-            print(" --> XdG:           " + "gating = {}".format(args.gating_prop))
+            logging.info(" --> XdG:           " + "gating = {}".format(args.gating_prop))
 
     # -for replay / functional regularization (except FROMP)
     replay_stamp = ""
@@ -159,7 +159,7 @@ def get_param_stamp(args, model_name, verbose=True, replay_model_name=None, feat
             ) else "",
         )
         if verbose:
-            print(" --> replay:        " + replay_stamp)
+            logging.info(" --> replay:        " + replay_stamp)
         replay_stamp = "--{}".format(replay_stamp)
 
     # -for memory-buffer & its use (e.g., FROMP, iCaRL)
@@ -176,7 +176,7 @@ def get_param_stamp(args, model_name, verbose=True, replay_model_name=None, feat
                               "fromp{}-".format(args.tau) if checkattr(args, 'fromp') else "")
         memory_buffer_stamp = "--{}{}".format(use, buffer_opts)
         if verbose:
-            print(" --> memory buffer: " + "{}{}".format(use, buffer_opts))
+            logging.info(" --> memory buffer: " + "{}{}".format(use, buffer_opts))
 
     # -for binary classification loss (e.g., iCaRL)
     bin_stamp = ""
@@ -195,7 +195,7 @@ def get_param_stamp(args, model_name, verbose=True, replay_model_name=None, feat
         bin_stamp, stream_stamp, "-s{}".format(args.seed) if not args.seed==0 else ""
     )
 
-    ## Print param-stamp on screen and return
+    ## logging.info param-stamp on screen and return
     if verbose:
-        print(param_stamp)
+        logging.info(param_stamp)
     return param_stamp

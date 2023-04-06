@@ -9,7 +9,9 @@ from utils import get_data_loader,checkattr
 from data.manipulate import SubDataset, MemorySetDataset
 from models.cl.continual_learner import ContinualLearner
 from eval import evaluate
-
+from models.utils import loss_functions as lf
+from torch.nn import functional as F
+import logging
 
 def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
     '''Train a model with a "train_a_batch" method for [iters] iterations on data from [train_loader].
@@ -366,7 +368,13 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
 
             #---> Train MAIN MODEL
             if batch_index <= iters_to_use:
-
+                # if previous_model is not None:
+                    
+                #     vals = [1000,3000,4000]
+                #     if batch_index in vals:
+                #         num_iters-=1
+                #     for it in range(num_iters):
+                #         x = previous_model(x, gate_input=y)
                 # Train the main model with this batch
                 loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./context,
                                                 contexts_=context_used, active_classes=active_classes, context=context)
@@ -453,7 +461,25 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         for context_cb in context_cbs:
             if context_cb is not None:
                 context_cb(model, iters_to_use, context=context)
-
+        # if context>1:
+        #     for it in range(100):
+        #         # print(dataset)
+        #         # data_loader = get_data_loader(dataset, len(dataset), cuda=cuda, shuffle=False)
+        #         # z_class = []
+        #         model.eval()
+        #         with torch.no_grad():
+        #             # for x,y in data_loader:
+        #             #     _, _, _, _, z = model.forward(x.to(device), gate_input=y.to(device), full=True)
+        #             #     z_class.append(z)
+        #             # z_class = torch.cat(z_class, dim=0)
+        #             # mean_class, var_class = torch.var_mean(z_class, dim=0)
+        #             reconL = F.mse_loss(input=model.z_class_means[it], target=previous_model.z_class_means[it], reduction='none')
+        #             reconL = torch.mean(reconL).item()
+        #             # reconL = -lf.log_Normal_standard(x=mean_class, mean=model.z_class_means[y[0]], average=True, dim=-1)
+        #             # reconL = lf.weighted_average(reconL).item()
+        #             # logging.info(model.z_class_means[y[0]])
+        #             logging.info(np.sqrt(reconL))
+        #         model.train()
         # REPLAY: update source for replay
         if context<len(train_datasets) and hasattr(model, 'replay_mode'):
             previous_model = copy.deepcopy(model).eval()
@@ -500,40 +526,61 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         # average_accs = sum(accs) / (context)
         # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
-        accs = []
+        # accs = []
         
-        rec_losses = []
+        # rec_losses = []
+        # for i in range(context):
+        #     if len(gen_data)<i+1:                    
+        #         acc, gen, rec_loss = evaluate.test_acc(
+        #             model, test_datasets[i], gen_data=None,verbose=False, test_size=None, context_id=i, allowed_classes=None
+        #         )
+        #         gen_data.append(gen)
+        #     else:
+        #         acc, gen, rec_loss = evaluate.test_acc(
+        #             model, test_datasets[i], gen_data=gen_data[i],verbose=False, test_size=None, context_id=i, allowed_classes=None
+        #         )
+        #         gen_data[i] = gen
+        #     rec_losses.append(rec_loss)
+        #     accs.append(acc)
+        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
+        #     print(f"Reconstruction loss for context {i+1}: {rec_loss}")
+        # average_accs = sum(accs) / (context)
+        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        
+        # average_rec_loss = sum(rec_losses)/context
+        # print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
+
         for i in range(context):
             if len(gen_data)<i+1:                    
-                acc, gen, rec_loss = evaluate.test_acc(
+                acc = evaluate.test_acc(
                     model, test_datasets[i], gen_data=None,verbose=False, test_size=None, context_id=i, allowed_classes=None
                 )
-                gen_data.append(gen)
+                # gen_data.append(gen)
             else:
-                acc, gen, rec_loss = evaluate.test_acc(
-                    model, test_datasets[i], gen_data=gen_data[i],verbose=False, test_size=None, context_id=i, allowed_classes=None
+                acc = evaluate.test_acc(
+                    model, test_datasets[i], gen_data=None,verbose=False, test_size=None, context_id=i, allowed_classes=None
                 )
-                gen_data[i] = gen
-            rec_losses.append(rec_loss)
+                # gen_data[i] = gen
+            # rec_losses.append(rec_loss)
             accs.append(acc)
-            print(" - Context {}: {:.4f}".format(i + 1, acc))
-            print(f"Reconstruction loss for context {i+1}: {rec_loss}")
+            logging.info(" - Context {}: {:.4f}".format(i + 1, acc))
+            # print(f"Reconstruction loss for context {i+1}: {rec_loss}")
         average_accs = sum(accs) / (context)
-        print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
         
-        average_rec_loss = sum(rec_losses)/context
-        print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
+        # average_rec_loss = sum(rec_losses)/context
+        # print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
 
-        if model.label == "VAE" or model.label == "CondVAE":
-            rec_losses = []
-            for i in range(context):
-                rec_loss = evaluate.test_degradation(
-                    model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
-                )
-                rec_losses.append(rec_loss)
-                print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
-            average_accs = sum(rec_losses) / (context)
-            print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        # if model.label == "VAE" or model.label == "CondVAE":
+        #     rec_losses = []
+        #     for i in range(context):
+        #         rec_loss = evaluate.test_degradation(
+        #             model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
+        #         )
+        #         rec_losses.append(rec_loss)
+        #         print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
+        #     average_accs = sum(rec_losses) / (context)
+        #     print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
 #------------------------------------------------------------------------------------------------------------#
 
