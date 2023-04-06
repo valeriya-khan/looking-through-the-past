@@ -329,7 +329,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         # print("heloooooooooooooooooooooooooooo")
                         scores_ = previous_model.classify(x_, no_prototypes=True)
                         _, label = torch.max(scores_, dim=1)
-                        _,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True, gate_input = label)
+                        _,_,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True, gate_input = label)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
                         if model.experiment=="CIFAR50":
                             scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
@@ -347,7 +347,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         with torch.no_grad():
                             # print("darkneeeeeeeeeesssssssssssss")
                             all_scores_ = previous_model.classify(x_, no_prototypes=True)
-                            _,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True)
+                            _,_,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True)
                     for context_id in range(context-1):
                         # -if there is a context-mask (i.e., XdG), obtain predicted scores for each context separately
                         if previous_model.mask_dict is not None:
