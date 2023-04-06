@@ -464,7 +464,7 @@ def run(args, verbose=False):
         start = time.time()
     accs = []
     for i in range(args.contexts):
-        acc, _, _ = evaluate.test_acc(
+        acc= evaluate.test_acc(
             model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
                 range(config['classes_per_context']*i, config['classes_per_context']*(i+1))
             ) if (args.scenario=="task" and not checkattr(args, 'singlehead')) else None,
