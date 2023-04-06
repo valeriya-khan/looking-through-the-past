@@ -526,7 +526,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         # average_accs = sum(accs) / (context)
         # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
-        # accs = []
+        accs = []
         
         # rec_losses = []
         # for i in range(context):
