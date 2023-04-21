@@ -318,6 +318,9 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     x_temp_ = previous_generator.sample(batch_size, allowed_classes=allowed_classes,
                                                         allowed_domains=allowed_domains, only_x=False)
                     x_ = x_temp_[0] if type(x_temp_)==tuple else x_temp_
+                    y_temp_cycle_ = x_temp_[1]
+                    for cycle in range(10):
+                        x_ = previous_generator(x_, gate_input=y_temp_cycle_, full=False)
                     context_used = x_temp_[2] if type(x_temp_)==tuple else None
 
             #---OUTPUTS---#

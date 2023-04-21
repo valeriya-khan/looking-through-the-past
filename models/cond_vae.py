@@ -564,12 +564,12 @@ class CondVAE(ContinualLearner):
                                     weights=batch_weights)  #--> summing over classes & averaging over batch in function
         else:
             distilL = torch.tensor(0., device=self._device())
-        if y is not None and y_hat_recon is not None:
-            predReconL = F.cross_entropy(input=y_hat_recon, target=y, reduction='none')
-            #--> no reduction needed, summing over classes is "implicit"
-            predReconL = lf.weighted_average(predReconL, weights=batch_weights, dim=0)  # -> average over batch
-        else:
-            predReconL = torch.tensor(0., device=self._device())            
+        # if y is not None and y_hat_recon is not None:
+        #     predReconL = F.cross_entropy(input=y_hat_recon, target=y, reduction='none')
+        #     #--> no reduction needed, summing over classes is "implicit"
+        #     predReconL = lf.weighted_average(predReconL, weights=batch_weights, dim=0)  # -> average over batch
+        # else:
+        #     predReconL = torch.tensor(0., device=self._device())            
         if mu_dist is not None and mu is not None:
             muDistilL = self.calculate_recon_loss(x=mu.view(batch_size, -1),x_recon=mu_dist.view(batch_size, -1), average=True)
             muDistilL = lf.weighted_average(muDistilL, weights=batch_weights, dim=0)  
@@ -583,7 +583,7 @@ class CondVAE(ContinualLearner):
             logvarDistilL = torch.tensor(0., device=self._device())
 
         # Return a tuple of the calculated losses
-        return reconL, variatL, predL, distilL, predReconL, muDistilL, logvarDistilL, reconmuL, reconvarL
+        return reconL, variatL, predL, distilL, muDistilL, logvarDistilL, reconmuL, reconvarL
 
 
 
@@ -636,13 +636,13 @@ class CondVAE(ContinualLearner):
                     y_hat_recon = y_hat_recon[:, class_entries]
 
             # Calculate all losses
-            reconL, variatL, predL, _, predReconL, _, _, reconmuL, reconvarL = self.loss_function(
+            reconL, variatL, predL, _,  _, _, reconmuL, reconvarL = self.loss_function(
                 x=x, y=y, x_recon=recon_batch, y_hat=y_hat,y_hat_recon=y_hat_recon, scores=None, mu=mu, z=z, logvar=logvar,mu_recon=mu_recon, logvar_recon=logvar_recon,
                 allowed_classes=class_entries if active_classes is not None else None
             ) #--> [allowed_classes] will be used only if [y] is not provided
 
             # Weigh losses as requested
-            loss_cur = self.lamda_rcl*reconL + self.lamda_vl*variatL + self.lamda_pl*predL + predReconL + reconvarL + reconmuL
+            loss_cur = self.lamda_rcl*reconL + self.lamda_vl*variatL + self.lamda_pl*predL + reconvarL + reconmuL
 
             # Calculate training-accuracy
             if y is not None and y_hat is not None:
@@ -667,7 +667,6 @@ class CondVAE(ContinualLearner):
             variatL_r = [torch.tensor(0., device=self._device())]*n_replays
             predL_r = [torch.tensor(0., device=self._device())]*n_replays
             distilL_r = [torch.tensor(0., device=self._device())]*n_replays
-            predReconL_r = [torch.tensor(0., device=self._device())]*n_replays
             muDistilL_r = [torch.tensor(0., device=self._device())]*n_replays
             logvarDistilL_r = [torch.tensor(0., device=self._device())]*n_replays
             reconmuL_r = [torch.tensor(0., device=self._device())]*n_replays
@@ -730,7 +729,7 @@ class CondVAE(ContinualLearner):
                 ) else y_hat_recon_all[:, active_classes[replay_id]]
 
                 # Calculate all losses
-                reconL_r[replay_id],variatL_r[replay_id],predL_r[replay_id],distilL_r[replay_id], predReconL_r[replay_id],muDistilL_r[replay_id],logvarDistilL_r[replay_id], reconmuL_r[replay_id], reconvarL_r[replay_id] = self.loss_function(
+                reconL_r[replay_id],variatL_r[replay_id],predL_r[replay_id],distilL_r[replay_id], muDistilL_r[replay_id],logvarDistilL_r[replay_id], reconmuL_r[replay_id], reconvarL_r[replay_id] = self.loss_function(
                     x=x_temp_, y=y_[replay_id] if (y_ is not None) else None, x_recon=recon_batch, y_hat=y_hat,y_hat_recon=y_hat_recon,
                     scores=scores_[replay_id] if (scores_ is not None) else None, mu=mu, z=z, logvar=logvar,mu_dist=mu_dist, logvar_dist=logvar_dist,mu_recon=mu_recon, logvar_recon=logvar_recon,
                     allowed_classes=active_classes[replay_id] if active_classes is not None else None,
