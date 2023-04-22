@@ -18,7 +18,9 @@ import options
 from param_values import set_method_options,check_for_errors,set_default_values
 import define_models as define
 from models.cl import fromp_optimizer
-
+import logging
+from git import Repo
+import sys
 
 ## Function for specifying input-options and organizing / checking them
 def handle_inputs():
@@ -49,9 +51,9 @@ def run(args, verbose=False):
     if checkattr(args, 'pdf') and not os.path.isdir(args.p_dir):
         os.mkdir(args.p_dir)
 
-    # If only want param-stamp, get it printed to screen and exit
+    # If only want param-stamp, get it logging.infoed to screen and exit
     if checkattr(args, 'get_stamp'):
-        print(get_param_stamp_from_args(args=args))
+        logging.info(get_param_stamp_from_args(args=args))
         exit()
 
     # Use cuda?
@@ -60,7 +62,7 @@ def run(args, verbose=False):
 
     # Report whether cuda is used
     if verbose:
-        print("CUDA is {}used".format("" if cuda else "NOT(!!) "))
+        logging.info("CUDA is {}used".format("" if cuda else "NOT(!!) "))
 
     # Set random seeds
     np.random.seed(args.seed)
@@ -76,7 +78,7 @@ def run(args, verbose=False):
 
     # Prepare data for chosen experiment
     if verbose:
-        print("\n\n " +' LOAD DATA '.center(70, '*'))
+        logging.info("\n\n " +' LOAD DATA '.center(70, '*'))
     (train_datasets, test_datasets), config = get_context_set(
         name=args.experiment, scenario=args.scenario, contexts=args.contexts, data_dir=args.d_dir,
         normalize=checkattr(args, "normalize"), verbose=verbose, exception=(args.seed==0),
@@ -101,7 +103,7 @@ def run(args, verbose=False):
     #     beginning, but this currently does not work with iCaRL or pixel-level generative replay/classification
     if use_feature_extractor and depth>0:
         if verbose:
-            print("\n\n " + ' DEFINE FEATURE EXTRACTOR '.center(70, '*'))
+            logging.info("\n\n " + ' DEFINE FEATURE EXTRACTOR '.center(70, '*'))
         feature_extractor = define.define_feature_extractor(args=args, config=config, device=device)
         # - initialize (pre-trained) parameters
         define.init_params(feature_extractor, args, verbose=verbose)
@@ -109,7 +111,7 @@ def run(args, verbose=False):
         for param in feature_extractor.parameters():
             param.requires_grad = False
         feature_extractor.eval()
-        # - print characteristics of feature extractor on the screen
+        # - logging.info characteristics of feature extractor on the screen
         if verbose:
             utils.print_model_info(feature_extractor)
         # - reset size and # of channels to reflect the extracted features rather than the original images
@@ -123,7 +125,7 @@ def run(args, verbose=False):
     # Convert original data to features (so this doesn't need to be done at run-time)
     if (feature_extractor is not None) and args.depth>0:
         if verbose:
-            print("\n\n " + ' PUT DATA TRHOUGH FEATURE EXTRACTOR '.center(70, '*'))
+            logging.info("\n\n " + ' PUT DATA TRHOUGH FEATURE EXTRACTOR '.center(70, '*'))
         train_datasets = utils.preprocess(feature_extractor, train_datasets, config, batch=args.batch,
                                           message='<TRAINSET>')
         test_datasets = utils.preprocess(feature_extractor, test_datasets, config, batch=args.batch,
@@ -137,7 +139,7 @@ def run(args, verbose=False):
 
     # Define the classifier
     if verbose:
-        print("\n\n " + ' DEFINE THE CLASSIFIER '.center(70, '*'))
+        logging.info("\n\n " + ' DEFINE THE CLASSIFIER '.center(70, '*'))
     model = define.define_classifier(args=args, config=config, device=device, depth=depth)
 
     # Some type of classifiers consist of multiple networks
@@ -263,7 +265,7 @@ def run(args, verbose=False):
     train_gen = True if (args.replay=="generative" and not checkattr(args, 'feedback')) else False
     if train_gen:
         if verbose:
-            print("\n\n " + ' SEPARATE GENERATIVE MODEL '.center(70, '*'))
+            logging.info("\n\n " + ' SEPARATE GENERATIVE MODEL '.center(70, '*'))
         # -specify architecture
         generator = define.define_vae(args=args, config=config, device=device, depth=depth)
         # -initialize parameters
@@ -327,7 +329,7 @@ def run(args, verbose=False):
     # Get parameter-stamp (and print on screen)
     if verbose:
         if verbose:
-            print('\n\n' + ' PARAMETER STAMP '.center(70, '*'))
+            logging.info('\n\n' + ' PARAMETER STAMP '.center(70, '*'))
     param_stamp = get_param_stamp(
         args, model.name, replay_model_name=generator.name if train_gen else None,
         feature_extractor_name= feature_extractor.name if (feature_extractor is not None) else None, verbose=verbose,
@@ -345,7 +347,7 @@ def run(args, verbose=False):
     # Setting up Visdom environment
     if utils.checkattr(args, 'visdom'):
         if verbose:
-            print('\n\n'+' VISDOM '.center(70, '*'))
+            logging.info('\n\n'+' VISDOM '.center(70, '*'))
         from visdom import Visdom
         env_name = "{exp}{con}-{sce}".format(exp=args.experiment, con=args.contexts, sce=args.scenario)
         visdom = {'env': Visdom(env=env_name), 'graph': visdom_name(args)}
@@ -398,7 +400,7 @@ def run(args, verbose=False):
     # Train model
     if args.train:
         if verbose:
-            print('\n\n' + ' TRAINING '.center(70, '*'))
+            logging.info('\n\n' + ' TRAINING '.center(70, '*'))
         # -keep track of training-time
         if args.time:
             start = time.time()
@@ -426,7 +428,7 @@ def run(args, verbose=False):
             time_file.write('{}\n'.format(training_time))
             time_file.close()
             if verbose and args.time:
-                print("Total training time = {:.1f} seconds\n".format(training_time))
+                logging.info("Total training time = {:.1f} seconds\n".format(training_time))
         # -save trained model(s), if requested
         if args.save:
             save_name = "mM-{}".format(param_stamp) if (
@@ -436,7 +438,7 @@ def run(args, verbose=False):
     else:
         # Load previously trained model(s) (if goal is to only evaluate previously trained model)
         if verbose:
-            print("\nLoading parameters of previously trained model...")
+            logging.info("\nLoading parameters of previously trained model...")
         load_name = "mM-{}".format(param_stamp) if (
             not hasattr(args, 'full_ltag') or args.full_ltag == "none"
         ) else "{}-{}".format(model.name, args.full_ltag)
@@ -449,7 +451,7 @@ def run(args, verbose=False):
     #----------------------#
 
     if verbose:
-        print('\n\n' + ' EVALUATION '.center(70, '*'))
+        logging.info('\n\n' + ' EVALUATION '.center(70, '*'))
 
     # Set attributes of model that define how to do classification
     if checkattr(args, 'gen_classifier'):
@@ -457,7 +459,7 @@ def run(args, verbose=False):
 
     # Evaluate accuracy of final model on full test-set
     if verbose:
-        print("\n Accuracy of final model on test-set:")
+        logging.info("\n Accuracy of final model on test-set:")
     if args.time:
         start = time.time()
     accs = []
@@ -468,11 +470,11 @@ def run(args, verbose=False):
             ) if (args.scenario=="task" and not checkattr(args, 'singlehead')) else None,
         )
         if verbose:
-            print(" - Context {}: {:.4f}".format(i + 1, acc))
+            logging.info(" - Context {}: {:.4f}".format(i + 1, acc))
         accs.append(acc)
     average_accs = sum(accs) / args.contexts
     if verbose:
-        print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(args.contexts, average_accs))
+        logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(args.contexts, average_accs))
     # -write out to text file
     # (trainset, testset), config = get_all_data(
     #     name="CIFAR100", data_dir=args.d_dir, verbose=True,
@@ -497,14 +499,14 @@ def run(args, verbose=False):
     acc = evaluate.test_acc(
             model, testset[0], verbose=False, test_size=None, context_id=None, allowed_classes=None,
         )
-    print("Accuracy over all classes is ", acc)
+    logging.info("Accuracy over all classes is ", acc)
     if args.time:
         inference_time = time.time() - start
         time_file = open("{}/time-{}.txt".format(args.r_dir, param_stamp), 'w')
         time_file.write('{}\n'.format(inference_time))
         time_file.close()
         if verbose and args.time:
-            print("Total inference time = {:.1f} seconds\n".format(inference_time))
+            logging.info("Total inference time = {:.1f} seconds\n".format(inference_time))
     file_name = "{}/acc-{}{}.txt".format(args.r_dir, param_stamp,
                                          "--S{}".format(args.eval_s) if checkattr(args, 'gen_classifier') else "")
     output_file = open(file_name, 'w')
@@ -552,14 +554,34 @@ def run(args, verbose=False):
             pp.savefig(figure)
         # -close pdf
         pp.close()
-        # -print name of generated plot on screen
+        # -logging.info name of generated plot on screen
         if verbose:
-            print("\nGenerated plot: {}\n".format(plot_name))
+            logging.info("\nGenerated plot: {}\n".format(plot_name))
 
 
 
 if __name__ == '__main__':
     # -load input-arguments
     args = handle_inputs()
+    logs_name = "logs/{}/{}/{}".format(args.scenario, args.experiment, args.contexts)
+    
+    if not os.path.exists(logs_name):
+        os.makedirs(logs_name)
+    logfilename = "logs/{}/{}/{}/{}_{}_{}".format(
+        args.scenario,
+        args.experiment,
+        args.contexts,
+        Repo().head.ref.name,
+        args.iters,
+        args.seed,
+    )
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(filename)s] => %(message)s",
+        handlers=[
+            logging.FileHandler(filename=logfilename + ".log"),
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
     # -run experiment
     run(args, verbose=True)

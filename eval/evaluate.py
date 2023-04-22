@@ -4,7 +4,7 @@ from visual import visual_plt
 from visual import visual_visdom
 from utils import get_data_loader,checkattr
 from models.utils import loss_functions as lf
-
+import logging
 ####--------------------------------------------------------------------------------------------------------------####
 
 ####-----------------------------####
@@ -68,10 +68,10 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, verbose=True, conte
         total_tested += len(x)
     accuracy = total_correct / total_tested
 
-    # Set model back to its initial mode, print result on screen (if requested) and return it
+    # Set model back to its initial mode, logging.info result on screen (if requested) and return it
     model.train(mode=mode)
     if verbose:
-        print('=> accuracy: {:.3f}'.format(accuracy))
+        logging.info('=> accuracy: {:.3f}'.format(accuracy))
     return accuracy
 
 def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=True, context_id=None, allowed_classes=None,
@@ -117,14 +117,14 @@ def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=Tru
                 x_recon = model.forward(x.to(device))
             recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
             recon_loss = lf.weighted_average(recon_loss, dim=0)       # -> average over batch
-        # print(recon_loss.size())
-        # print(len(x))
+        # logging.info(recon_loss.size())
+        # logging.info(len(x))
         total_loss += recon_loss.sum().item()
         total_tested += len(x)
     
     degrad = total_loss / total_tested
 
-    # Set model back to its initial mode, print result on screen (if requested) and return it
+    # Set model back to its initial mode, logging.info result on screen (if requested) and return it
     # model.dg_gates = True
     model.train(mode=mode)
     return degrad
@@ -154,9 +154,9 @@ def test_all_so_far(model, datasets, current_context, iteration, test_size=None,
         current_context = i+1
     average_precs = sum([precs[context_id] for context_id in range(current_context)]) / current_context
 
-    # Print results on screen
+    # logging.info results on screen
     if verbose:
-        print(' => ave accuracy: {:.3f}'.format(average_precs))
+        logging.info(' => ave accuracy: {:.3f}'.format(average_precs))
 
     # Add results to [plotting_dict]
     if plotting_dict is not None:

@@ -4,7 +4,7 @@ from torchvision import transforms
 from torch.utils.data import ConcatDataset
 from data.manipulate import permutate_image_pixels, SubDataset, TransformedDataset
 from data.available import AVAILABLE_DATASETS, AVAILABLE_TRANSFORMS, DATASET_CONFIGS
-
+import logging
 
 def get_dataset(name, type='train', download=True, capacity=None, permutation=None, dir='./store/datasets',
                 verbose=False, augment=False, normalize=False, target_transform=None):
@@ -28,7 +28,7 @@ def get_dataset(name, type='train', download=True, capacity=None, permutation=No
 
     # print information about dataset on the screen
     if verbose:
-        print(" --> {}: '{}'-dataset consisting of {} samples".format(name, type, len(dataset)))
+        logging.info(" --> {}: '{}'-dataset consisting of {} samples".format(name, type, len(dataset)))
 
     # if dataset is (possibly) not large enough, create copies until it is.
     if capacity is not None and len(dataset) < capacity:

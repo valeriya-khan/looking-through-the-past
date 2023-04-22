@@ -9,7 +9,7 @@ from utils import get_data_loader,checkattr
 from data.manipulate import SubDataset, MemorySetDataset
 from models.cl.continual_learner import ContinualLearner
 from eval import evaluate
-
+import logging
 
 def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
     '''Train a model with a "train_a_batch" method for [iters] iterations on data from [train_loader].
@@ -329,7 +329,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 if not per_context:
                     # -if replay does not need to be evaluated separately for each context
                     with torch.no_grad():
-                        # print("heloooooooooooooooooooooooooooo")
+                        # logging.info("heloooooooooooooooooooooooooooo")
                         scores_ = previous_model.classify(x_, no_prototypes=True)
                         _, label = torch.max(scores_, dim=1)
                         _,_,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True, gate_input = label)
@@ -348,7 +348,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     # -if no context-mask and no conditional generator, all scores can be calculated in one go
                     if previous_model.mask_dict is None and not type(x_)==list:
                         with torch.no_grad():
-                            # print("darkneeeeeeeeeesssssssssssss")
+                            # logging.info("darkneeeeeeeeeesssssssssssss")
                             all_scores_ = previous_model.classify(x_, no_prototypes=True)
                             _,_,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True)
                     for context_id in range(context-1):
@@ -504,9 +504,9 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         #         )
         #     )
         #     accs.append(acc)
-        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
+        #     logging.info(" - Context {}: {:.4f}".format(i + 1, acc))
         # average_accs = sum(accs) / (context)
-        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        # logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
         accs = []
         for i in range(context):
@@ -514,9 +514,9 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
             )
             accs.append(acc)
-            print(" - Context {}: {:.4f}".format(i + 1, acc))
+            logging.info(" - Context {}: {:.4f}".format(i + 1, acc))
         average_accs = sum(accs) / (context)
-        print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+        logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
         if model.label == "VAE" or model.label == "CondVAE":
             rec_losses = []
@@ -525,9 +525,9 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
                 )
                 rec_losses.append(rec_loss)
-                print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
+                logging.info(" - Context {}: {:.4f}".format(i + 1, rec_loss))
             average_accs = sum(rec_losses) / (context)
-            print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
+            logging.info('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
 #------------------------------------------------------------------------------------------------------------#
 
