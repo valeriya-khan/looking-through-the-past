@@ -152,9 +152,19 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 active_classes = None
             elif model.neg_samples=="current":
                 #--> only those classes in the current or replayed context are active (i.e., train "as if Task-IL")
-                active_classes = [list(
-                    range(model.classes_per_context * i, model.classes_per_context * (i + 1))
-                ) for i in range(context)]
+                if model.experiment!="CIFAR50":
+                    active_classes = [list(
+                        range(model.classes_per_context * i, model.classes_per_context * (i + 1))
+                    ) for i in range(context)]
+                else:
+                    if context==1:
+                        active_classes = [list(
+                        range(50)
+                    ) ]
+                    else:
+                        active_classes = [list(range(50))] + [list(
+                        range(50+model.classes_per_context * i, 50+model.classes_per_context * (i + 1))
+                    ) for i in range(context-1)]
 
         # Reset state of optimizer(s) for every context (if requested)
         if (not model.label=="SeparateClassifiers") and model.optim_type=="adam_reset":
@@ -228,9 +238,19 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 binary_distillation = hasattr(model, "binaryCE") and model.binaryCE and model.binaryCE_distill
                 if binary_distillation and model.scenario in ("class", "all") and (previous_model is not None):
                     with torch.no_grad():
-                        scores = previous_model.classify(
-                            x, no_prototypes=True
-                        )[:, :(model.classes_per_context * (context - 1))]
+                        if model.experiment!="CIFAR50":
+                            scores = previous_model.classify(
+                                x, no_prototypes=True
+                            )[:, :(model.classes_per_context * (context - 1))]
+                        else:
+                            if context==1:
+                                scores = previous_model.classify(
+                                x, no_prototypes=True
+                            )[:, :(0)]
+                            else:
+                                scores = previous_model.classify(
+                                x, no_prototypes=True
+                            )[:, :(50+model.classes_per_context * (context - 2))]
                 else:
                     scores = None
 
@@ -252,7 +272,10 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         with torch.no_grad():
                             scores_ = previous_model.classify(x_, no_prototypes=True)
                         if model.scenario=="class" and model.neg_samples=="all-so-far":
-                            scores_ = scores_[:, :(model.classes_per_context*(context-1))]
+                            if model.experiment!="CIFAR50":
+                                scores_ = scores_[:, :(model.classes_per_context*(context-1))]
+                            else:
+                                scores_ = scores_[:, :(50 + model.classes_per_context*(context-2))]
                             #-> if [scores_] is not same length as [x_], zero probs are added in [loss_fn_kd]-function
                 else:
                     # Sample replayed training data, move to correct device and store in lists
@@ -376,7 +399,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 #     for it in range(num_iters):
                 #         x = previous_model(x, gate_input=y)
                 # Train the main model with this batch
-                loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./context,
+                loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./(5+(context-1)),
                                                 contexts_=context_used, active_classes=active_classes, context=context)
 
                 # Update running parameter importance estimates in W (needed for SI)
@@ -400,7 +423,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             if generator is not None and batch_index <= gen_iters:
 
                 # Train the generator with this batch
-                loss_dict = generator.train_a_batch(x, x_=x_, rnt=1./context)
+                loss_dict = generator.train_a_batch(x, x_=x_, rnt=1./(5+(context-1)))
 
                 # Fire callbacks on each iteration
                 for loss_cb in gen_loss_cbs:
@@ -446,9 +469,19 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             # reduce examplar-sets (only needed when '--use-full-capacity' is selected)
             model.reduce_memory_sets(samples_per_class)
             # for each new class trained on, construct examplar-set
-            new_classes = list(range(model.classes_per_context)) if (
-                    model.scenario=="domain" or per_context_singlehead
-            ) else list(range(model.classes_per_context*(context-1), model.classes_per_context*context))
+            if model.experiment!="CIFAR50":
+                new_classes = list(range(model.classes_per_context)) if (
+                        model.scenario=="domain" or per_context_singlehead
+                ) else list(range(model.classes_per_context*(context-1), model.classes_per_context*context))
+            else:
+                if context==1:
+                    new_classes = list(range(50)) if (
+                        model.scenario=="domain" or per_context_singlehead
+                ) else list(range(0, 50))
+                else:
+                    new_classes = list(range(model.classes_per_context)) if (
+                            model.scenario=="domain" or per_context_singlehead
+                    ) else list(range(50+model.classes_per_context*(context-2), 50+model.classes_per_context*(context-1)))
             for class_id in new_classes:
                 # create new dataset containing only all examples of this class
                 class_dataset = SubDataset(original_dataset=train_dataset, sub_labels=[class_id])
@@ -496,18 +529,48 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     if per_context:
                         previous_datasets = []
                         for context_id in range(context):
-                            previous_datasets.append(MemorySetDataset(
-                                model.memory_sets[
-                                    (model.classes_per_context * context_id):(model.classes_per_context*(context_id+1))
-                                ],
-                                target_transform=(lambda y, x=model.classes_per_context * context_id: y + x) if (
-                                    not per_context_singlehead
-                                ) else (lambda y, x=model.classes_per_context: y % x)
-                            ))
+                            if model.experiment!="CIFAR50":
+                                previous_datasets.append(MemorySetDataset(
+                                    model.memory_sets[
+                                        (model.classes_per_context * context_id):(model.classes_per_context*(context_id+1))
+                                    ],
+                                    target_transform=(lambda y, x=model.classes_per_context * context_id: y + x) if (
+                                        not per_context_singlehead
+                                    ) else (lambda y, x=model.classes_per_context: y % x)
+                                ))
+                            else:
+                                if context_id==0:
+                                    previous_datasets.append(MemorySetDataset(
+                                    model.memory_sets[
+                                        0:50
+                                    ],
+                                    target_transform=(lambda y, x=0: y + x) if (
+                                        not per_context_singlehead
+                                    ) else (lambda y, x=50: y % x)
+                                ))
+                                else:
+                                    previous_datasets.append(MemorySetDataset(
+                                    model.memory_sets[
+                                        (50+model.classes_per_context * (context_id-1)):(50+model.classes_per_context*(context_id))
+                                    ],
+                                    target_transform=(lambda y, x=50+model.classes_per_context * (context_id-1): y + x) if (
+                                        not per_context_singlehead
+                                    ) else (lambda y, x=model.classes_per_context: y % x)
+                                ))
                     else:
-                        target_transform = None if not model.scenario=="domain" else (
-                            lambda y, x=model.classes_per_context: y % x
-                        )
+                        if model.experiment!="CIFAR50":
+                            target_transform = None if not model.scenario=="domain" else (
+                                lambda y, x=model.classes_per_context: y % x
+                            )
+                        else:
+                            if context==1:
+                                target_transform = None if not model.scenario=="domain" else (
+                                lambda y, x=50: y % x
+                            )
+                            else:
+                                target_transform = None if not model.scenario=="domain" else (
+                                lambda y, x=model.classes_per_context: y % x
+                            )
                         previous_datasets = [MemorySetDataset(model.memory_sets, target_transform=target_transform)]
 
         progress.close()

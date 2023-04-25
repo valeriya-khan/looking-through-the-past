@@ -63,21 +63,22 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, gen_data=None, verb
                 scores = model.classify(x.to(device), context=context_tensor)
             else:
                 scores = model.classify(x.to(device), allowed_classes=allowed_classes)
-                if gen_data is None:
-                    if hasattr(model, "dg_gates") and model.dg_gates:
-                        x_recon = model.forward(x.to(device),gate_input=y.to(device))
+                if model.label=="CondVAE":
+                    if gen_data is None:
+                        if hasattr(model, "dg_gates") and model.dg_gates:
+                            x_recon = model.forward(x.to(device),gate_input=y.to(device))
+                        else:
+                            x_recon = model.forward(x.to(device))
+                    
                     else:
-                        x_recon = model.forward(x.to(device))
-                
-                else:
-                    if hasattr(model, "dg_gates") and model.dg_gates:
-                        x_recon = model.forward(gen_data[it].to(device),gate_input=y.to(device))
-                    else:
-                        x_recon = model.forward(gen_data[it].to(device))
-                generated_data.append(x_recon)
-                recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
-                recon_loss = lf.weighted_average(recon_loss, dim=0) 
-                total_loss += recon_loss.sum().item()
+                        if hasattr(model, "dg_gates") and model.dg_gates:
+                            x_recon = model.forward(gen_data[it].to(device),gate_input=y.to(device))
+                        else:
+                            x_recon = model.forward(gen_data[it].to(device))
+                    generated_data.append(x_recon)
+                    recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
+                    recon_loss = lf.weighted_average(recon_loss, dim=0) 
+                    total_loss += recon_loss.sum().item()
         _, predicted = torch.max(scores.cpu(), 1)
         it+=1
         if model.prototypes and max(predicted).item() >= model.classes:
@@ -88,7 +89,8 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, gen_data=None, verb
         total_correct += (predicted == y).sum().item()
         total_tested += len(x)
     accuracy = total_correct / total_tested
-    degrad = total_loss / total_tested
+    if model.label=="CondVAE":
+        degrad = total_loss / total_tested
     # Set model back to its initial mode, print result on screen (if requested) and return it
     model.train(mode=mode)
     if verbose:

@@ -83,7 +83,8 @@ def define_standard_classifier(args, config, device, depth=0):
         fc_bn=True if args.fc_bn=="yes" else False,
         fc_nl=args.fc_nl,
         excit_buffer=True,
-        phantom=checkattr(args, 'fisher_kfac')
+        phantom=checkattr(args, 'fisher_kfac'),
+        experiment=args.experiment
     ).to(device)
     # Return model
     return model

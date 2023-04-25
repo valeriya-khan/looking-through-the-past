@@ -18,7 +18,7 @@ class Classifier(ContinualLearner, MemoryBuffer):
                  num_blocks=2, global_pooling=False, no_fnl=True, conv_gated=False,
                  # -fc-layers
                  fc_layers=3, fc_units=1000, fc_drop=0, fc_bn=True, fc_nl="relu", fc_gated=False,
-                 bias=True, excitability=False, excit_buffer=False, phantom=False):
+                 bias=True, excitability=False, excit_buffer=False, phantom=False, experiment="CIFAR100"):
 
         # configurations
         super().__init__()
@@ -28,6 +28,7 @@ class Classifier(ContinualLearner, MemoryBuffer):
         self.fc_layers = fc_layers
         self.fc_drop = fc_drop
         self.phantom = phantom
+        self.experiment = experiment
 
         # settings for training
         self.binaryCE = False             #-> use binary (instead of multiclass) prediction error
@@ -210,7 +211,13 @@ class Classifier(ContinualLearner, MemoryBuffer):
         # Calculate total replay loss
         loss_replay = None if (x_ is None) else sum(loss_replay)/n_replays
         if (x_ is not None) and self.lwf_weighting and (not self.scenario=='class'):
-            loss_replay *= (context-1)
+            if self.experiment!="CIFAR50":
+                loss_replay *= (context-1)
+            else:
+                if context==1:
+                    loss_replay *= 5
+                else:
+                    loss_replay *= 5+(context-2)
 
         # If using the replayed loss as an inequality constraint, calculate and store averaged gradient of replayed data
         if self.use_replay in ('inequality', 'both') and x_ is not None:
