@@ -399,7 +399,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 #     for it in range(num_iters):
                 #         x = previous_model(x, gate_input=y)
                 # Train the main model with this batch
-                loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./(5+(context-1)),
+                loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./context,
                                                 contexts_=context_used, active_classes=active_classes, context=context)
 
                 # Update running parameter importance estimates in W (needed for SI)
@@ -423,7 +423,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             if generator is not None and batch_index <= gen_iters:
 
                 # Train the generator with this batch
-                loss_dict = generator.train_a_batch(x, x_=x_, rnt=1./(5+(context-1)))
+                loss_dict = generator.train_a_batch(x, x_=x_, rnt=1./context)
 
                 # Fire callbacks on each iteration
                 for loss_cb in gen_loss_cbs:
