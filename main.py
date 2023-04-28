@@ -418,7 +418,7 @@ def run(args, verbose=False):
         else:
             first_iters = args.iters
         train_fn(
-            model, train_datasets, test_datasets, config, iters=args.iters, batch_size=args.batch,first_iters=first_iters, baseline=baseline,
+            model, train_datasets, test_datasets, config, iters=args.iters, batch_size=args.batch,first_iters=first_iters, cycles=args.cycles, baseline=baseline,
             sample_cbs=sample_cbs, eval_cbs=eval_cbs, loss_cbs=loss_cbs, context_cbs=context_cbs,
             # -if using generative replay with a separate generative model:
             generator=generator, gen_iters=args.g_iters if hasattr(args, 'g_iters') else args.iters,
@@ -570,13 +570,14 @@ if __name__ == '__main__':
     
     if not os.path.exists(logs_name):
         os.makedirs(logs_name)
-    logfilename = "logs/{}/{}/{}/{}_{}_{}".format(
+    logfilename = "logs/{}/{}/{}/{}_{}_{}_cycles-{}".format(
         args.scenario,
         args.experiment,
         args.contexts,
         Repo().head.ref.name,
         args.iters,
         args.seed,
+        args.cycles
     )
     logging.basicConfig(
         level=logging.INFO,

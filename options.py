@@ -19,6 +19,7 @@ def add_general_options(parser, main=False, comparison=False, compare_hyper=Fals
     if main:
         parser.add_argument('--get-stamp', action='store_true', help='print param-stamp & exit')
     parser.add_argument('--seed', type=int, default=0, help='[first] random seed (for each random-module used)')
+    parser.add_argument('--cycles', type=int, default=0, help='number of cycles')
     if comparison and (not compare_hyper):
         parser.add_argument('--n-seeds', type=int, default=1, help='how often to repeat?')
     parser.add_argument('--no-gpus', action='store_false', dest='cuda', help="don't use GPUs")

@@ -58,7 +58,7 @@ def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
 
 def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_size=32, baseline='none',
              loss_cbs=list(), eval_cbs=list(), sample_cbs=list(), context_cbs=list(),
-             generator=None, gen_iters=0, gen_loss_cbs=list(), first_iters = 0, **kwargs):
+             generator=None, gen_iters=0, gen_loss_cbs=list(), first_iters = 0, cycles=0, **kwargs):
     '''Train a model (with a "train_a_batch" method) on multiple contexts.
 
     [model]               <nn.Module> main model to optimize across all contexts
@@ -344,7 +344,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                                                         allowed_domains=allowed_domains, only_x=False)
                     x_ = x_temp_[0] if type(x_temp_)==tuple else x_temp_
                     y_temp_cycle_ = x_temp_[1]
-                    for cycle in range(10):
+                    for cycle in range(cycles):
                         x_ = previous_generator(x_, gate_input=y_temp_cycle_, full=False)
                     context_used = x_temp_[2] if type(x_temp_)==tuple else None
 
