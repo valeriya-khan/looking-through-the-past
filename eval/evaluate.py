@@ -11,7 +11,7 @@ import logging
 ####----CLASSIFIER EVALUATION----####
 ####-----------------------------####
 
-def test_acc(model, dataset, batch_size=128, test_size=1024, verbose=True, context_id=None, allowed_classes=None,
+def test_acc(model, dataset, batch_size=128, test_size=1024, gen_data=None, verbose=True, context_id=None, allowed_classes=None,
              no_context_mask=False, **kwargs):
     '''Evaluate accuracy (= proportion of samples classified correctly) of a classifier ([model]) on [dataset].
 
@@ -42,10 +42,15 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, verbose=True, conte
         allowed_classes = None
 
     # Loop over batches in [dataset]
-    data_loader = get_data_loader(dataset, batch_size, cuda=cuda)
+    data_loader = get_data_loader(dataset, batch_size, cuda=cuda, shuffle=False)
     total_tested = total_correct = 0
+    generated_data = []
+    # recon_loss = None
+    total_loss = 0
+    it = 0
     for x, y in data_loader:
         # -break on [test_size] (if "None", full dataset is used)
+        # print(x.shape, y.shape)
         if test_size:
             if total_tested >= test_size:
                 break
@@ -58,7 +63,24 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, verbose=True, conte
                 scores = model.classify(x.to(device), context=context_tensor)
             else:
                 scores = model.classify(x.to(device), allowed_classes=allowed_classes)
+                if model.label=="CondVAE":
+                    if gen_data is None:
+                        if hasattr(model, "dg_gates") and model.dg_gates:
+                            x_recon = model.forward(x.to(device),gate_input=y.to(device))
+                        else:
+                            x_recon = model.forward(x.to(device))
+                    
+                    else:
+                        if hasattr(model, "dg_gates") and model.dg_gates:
+                            x_recon = model.forward(gen_data[it].to(device),gate_input=y.to(device))
+                        else:
+                            x_recon = model.forward(gen_data[it].to(device))
+                    generated_data.append(x_recon)
+                    recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
+                    recon_loss = lf.weighted_average(recon_loss, dim=0) 
+                    total_loss += recon_loss.sum().item()
         _, predicted = torch.max(scores.cpu(), 1)
+        it+=1
         if model.prototypes and max(predicted).item() >= model.classes:
             # -in case of Domain-IL (or Task-IL + singlehead), collapse all corresponding domains to same class
             predicted = predicted % model.classes
@@ -67,8 +89,9 @@ def test_acc(model, dataset, batch_size=128, test_size=1024, verbose=True, conte
         total_correct += (predicted == y).sum().item()
         total_tested += len(x)
     accuracy = total_correct / total_tested
-
-    # Set model back to its initial mode, logging.info result on screen (if requested) and return it
+    if model.label=="CondVAE":
+        degrad = total_loss / total_tested
+    # Set model back to its initial mode, print result on screen (if requested) and return it
     model.train(mode=mode)
     if verbose:
         logging.info('=> accuracy: {:.3f}'.format(accuracy))
@@ -117,14 +140,14 @@ def test_degradation(model, dataset, batch_size=128, test_size=1024, verbose=Tru
                 x_recon = model.forward(x.to(device))
             recon_loss = model.calculate_recon_loss(x.to(device),x_recon)
             recon_loss = lf.weighted_average(recon_loss, dim=0)       # -> average over batch
-        # logging.info(recon_loss.size())
-        # logging.info(len(x))
+        # print(recon_loss.size())
+        # print(len(x))
         total_loss += recon_loss.sum().item()
         total_tested += len(x)
     
     degrad = total_loss / total_tested
 
-    # Set model back to its initial mode, logging.info result on screen (if requested) and return it
+    # Set model back to its initial mode, print result on screen (if requested) and return it
     # model.dg_gates = True
     model.train(mode=mode)
     return degrad
@@ -154,7 +177,7 @@ def test_all_so_far(model, datasets, current_context, iteration, test_size=None,
         current_context = i+1
     average_precs = sum([precs[context_id] for context_id in range(current_context)]) / current_context
 
-    # logging.info results on screen
+    # Print results on screen
     if verbose:
         logging.info(' => ave accuracy: {:.3f}'.format(average_precs))
 
