@@ -93,15 +93,20 @@ def load_checkpoint(model, model_dir, verbose=True, name=None, strict=True):
     '''Load saved state (in form of dictionary) at [model_dir] (if name is None, use "model.name") to [model].'''
     # -path from where to load checkpoint
     name = model.name if name is None else name
-    path = os.path.join(model_dir, name)
+    # path = os.path.join(model_dir, name)
+    path=name
     # load parameters (i.e., [model] will now have the state of the loaded model)
     checkpoint = torch.load(path)
-    model.load_state_dict(checkpoint['state'], strict=strict)
+    remove_prefix = 'model.'
+    checkpoint = {k[len(remove_prefix):] if k.startswith(remove_prefix) else k: v for k, v in checkpoint.items()}
+    sub_name = "heads.0"
+    checkpoint = {"fc"+k[len(sub_name):] if k.startswith(sub_name) else k: v for k, v in checkpoint.items()}
+    model.load_state_dict(checkpoint)
     if 'mask_dict' in checkpoint:
         model.mask_dict = checkpoint['mask_dict']
     # notify that we succesfully loaded the checkpoint
-    if verbose:
-        logging.info(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
+    # if verbose:
+    logging.info(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
 
 ##-------------------------------------------------------------------------------------------------------------------##
 
@@ -219,13 +224,14 @@ def preprocess(feature_extractor, dataset_list, config, batch=128, message='<PRE
         loader = get_data_loader(dataset_list[dataset_id], batch_size=batch, drop_last=False,
                                  cuda=feature_extractor._is_on_cuda())
         # -pre-allocate tensors, which will be filled slice-by-slice
-        all_features = torch.empty((len(loader.dataset), config['channels'], config['size'], config['size']))
+        all_features = torch.empty((len(loader.dataset), 4096))
         all_labels = torch.empty((len(loader.dataset)), dtype=torch.long)
         count = 0
         # print(all_features.shape)
         for x, y in loader:
             # print(x.shape)
             x = feature_extractor(x.to(device)).cpu()
+            # print(x.shape)
             # print(x.shape)
             all_features[count:(count+x.shape[0])] = x
             all_labels[count:(count+x.shape[0])] = y

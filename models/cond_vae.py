@@ -238,8 +238,8 @@ class CondVAE(ContinualLearner):
         # -put inputs through decoder
         hD = self.fromZ(z, gate_input=gate_input) if self.dg_gates else self.fromZ(z)
         image_features = self.fcD(hD, gate_input=gate_input) if self.dg_gates else self.fcD(hD)
-        image_recon = self.convD(self.to_image(image_features))
-        return image_recon
+        # image_recon = self.convD(self.to_image(image_features))
+        return image_features
 
     def forward(self, x, gate_input=None, full=False, reparameterize=True, **kwargs):
         '''Forward function to propagate [x] through the encoder, reparametrization and decoder.

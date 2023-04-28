@@ -284,12 +284,13 @@ def init_params(model, args, verbose=False):
         utils.bias_init(model, strategy="constant", value=0.01)
 
     ## Use pre-training
-    if utils.checkattr(args, "pre_convE") and hasattr(model, 'depth') and model.depth>0:
-        load_name = model.convE.name if (
-            not hasattr(args, 'convE_ltag') or args.convE_ltag=="none"
-        ) else "{}-{}{}".format(model.convE.name, args.convE_ltag,
-                                "-s{}".format(args.seed) if checkattr(args, 'seed_to_ltag') else "")
-        utils.load_checkpoint(model.convE, model_dir=args.m_dir, name=load_name, verbose=verbose)
+    if utils.checkattr(args, "pre_convE") and hasattr(model, 'name') and model.name=="resnet32":
+        # load_name = model.convE.name if (
+        #     not hasattr(args, 'convE_ltag') or args.convE_ltag=="none"
+        # ) else "{}-{}{}".format(model.convE.name, args.convE_ltag,
+        #                         "-s{}".format(args.seed) if checkattr(args, 'seed_to_ltag') else "")
+        load_name = "/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_inorder_0_0.pth"
+        utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
 
     ## Freeze some parameters?
     if utils.checkattr(args, "freeze_convE") and hasattr(model, 'convE'):
