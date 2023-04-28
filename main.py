@@ -21,7 +21,7 @@ import define_models as define
 from models.cl import fromp_optimizer
 import logging
 from git import Repo
-
+from models import resnet32
 ## Function for specifying input-options and organizing / checking them
 def handle_inputs():
     # Set indicator-dictionary for correctly retrieving / checking input options
@@ -104,10 +104,13 @@ def run(args, verbose=False):
     if use_feature_extractor and depth>0:
         if verbose:
             logging.info("\n\n " + ' DEFINE FEATURE EXTRACTOR '.center(70, '*'))
-        feature_extractor = define.define_feature_extractor(args=args, config=config, device=device)
+        # feature_extractor = define.define_feature_extractor(args=args, config=config, device=device)
         # - initialize (pre-trained) parameters
+        feature_extractor = resnet32.resnet32(num_classes=50, device=device)
         define.init_params(feature_extractor, args, verbose=verbose)
         # - freeze the parameters & set model to eval()-mode
+        feature_extractor.avgpool = torch.nn.Identity()
+        feature_extractor.fc = torch.nn.Identity()
         for param in feature_extractor.parameters():
             param.requires_grad = False
         feature_extractor.eval()
@@ -116,8 +119,8 @@ def run(args, verbose=False):
             utils.print_model_info(feature_extractor)
         # - reset size and # of channels to reflect the extracted features rather than the original images
         config = config.copy()  # -> make a copy to avoid overwriting info in the original config-file
-        config['size'] = feature_extractor.conv_out_size
-        config['channels'] = feature_extractor.conv_out_channels
+        config['size'] = 64
+        config['channels'] = 1
         depth = 0
     else:
         feature_extractor = None
