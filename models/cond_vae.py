@@ -362,7 +362,7 @@ class CondVAE(ContinualLearner):
                             gate_input=(context_used if self.dg_type=="context" else y_used) if self.dg_gates else None)
 
         # return samples as [batch_size]x[channels]x[image_size]x[image_size] tensor, plus requested additional info
-        return X if only_x else (X, y_used, context_used)
+        return X if only_x else (X, y_used, context_used,z)
 
 
 

@@ -22,6 +22,8 @@ import logging
 from git import Repo
 import sys
 from models import resnet32
+from utils import get_data_loader
+import copy
 ## Function for specifying input-options and organizing / checking them
 def handle_inputs():
     # Set indicator-dictionary for correctly retrieving / checking input options
@@ -42,6 +44,11 @@ def handle_inputs():
     check_for_errors(args, **kwargs)                 # -check whether incompatible options are selected
     return args
 
+def compare_models(model1, model2):
+    for p1, p2 in zip(model1.parameters(), model2.parameters()):
+        if p1.data.ne(p2.data).sum() > 0:
+            return False
+    return True
 
 def run(args, verbose=False):
 
@@ -445,7 +452,7 @@ def run(args, verbose=False):
         load_name = "mM-{}".format(param_stamp) if (
             not hasattr(args, 'full_ltag') or args.full_ltag == "none"
         ) else "{}-{}".format(model.name, args.full_ltag)
-        utils.load_checkpoint(model, args.m_dir, name=load_name, verbose=verbose, strict=False)
+        utils.load_checkpoint_model(model, "/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/", name="mM-CIFAR50-N6-class--Hresnet32--CondVAE=F-4096x2000x2000--z100-GMM100pc-c100_cg0.7--i5000-lr0.0001-b256-pCvE-e50s-ps-adam-all-so-far-MSE--generative-KD2.0", verbose=verbose, strict=True)
 
     #-------------------------------------------------------------------------------------------------#
 
@@ -478,43 +485,76 @@ def run(args, verbose=False):
     average_accs = sum(accs) / args.contexts
     if verbose:
         logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(args.contexts, average_accs))
+
+
+
+        # model.eval()
+        # arr = []
+        # batch_size = args.batch
+        # for it in range(6):
+        #     data_loader = get_data_loader(test_datasets[it], batch_size, cuda=cuda, shuffle=False)
+        #     for x, y in data_loader:
+        #         x, y  = x.to(device),y.to(device)
+        #         with torch.no_grad():
+        #             _,_,_,mu, _,_,_,_ = model(x,gate_input=y, full=True)
+        #             mu = mu.numpy(force=True)
+        #             arr.append(mu)
+        # all = np.concatenate(arr)
+        # print("the shape of original", all.shape)
+        # np.save("/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/original.npy", all)
+        # if model.experiment=="CIFAR50":
+        #     allowed_classes = None if model.scenario=="domain" else list(
+        #     range(50 + model.classes_per_context*(args.contexts-1))
+        #         )            
+        # else:
+        #     allowed_classes = None if model.scenario=="domain" else list(
+        #         range(model.classes_per_context*args.contexts)
+        #     )
+        # gens = []           
+        # # -which contexts are allowed to be generated? (only relevant if "Domain-IL" with context-gates)
+        # allowed_domains = list(range(args.contexts))
+        # cycles = [0,5,10,15,20]
+        # # for cycle in cycles: 
+        # # if 10000-len(gens)>256:
+        # utils.load_checkpoint_model(model, "/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/", name="mM-CIFAR50-N6-class--Hresnet32--CondVAE=F-4096x2000x2000--z100-GMM100pc-c100_cg0.7--i5000-lr0.0001-b256-pCvE-e50s-ps-adam-all-so-far-MSE--generative-KD2.0", verbose=verbose, strict=True)
+        # model.eval()
+        # x_temp_ = model.sample(10000, allowed_domains=allowed_domains,
+        #                                                 allowed_classes=allowed_classes, only_x=False)
+        # # else:
+        # #     batch_size = 10000-len(gens)
+        # #     x_temp_ = model.sample(batch_size, allowed_domains=allowed_domains,
+        # #                                                 allowed_classes=allowed_classes, only_x=False)
+
+        
+        # # z = x_temp_[3]
+        # y_temp_cycle_ = x_temp_[1]
+        # # model1 = copy.deepcopy(model)
+        # for cycle in cycles: 
+        #     utils.load_checkpoint_model(model, "/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/", name="mM-CIFAR50-N6-class--Hresnet32--CondVAE=F-4096x2000x2000--z100-GMM100pc-c100_cg0.7--i5000-lr0.0001-b256-pCvE-e50s-ps-adam-all-so-far-MSE--generative-KD2.0", verbose=verbose, strict=True)
+        #     x_ = x_temp_[0] if type(x_temp_)==tuple else x_temp_
+        #     for _ in range(cycle+1):
+        #         with torch.no_grad():
+        #             x_temp_cycle = model(x_, gate_input=y_temp_cycle_, full=True)
+        #             x_ = x_temp_cycle[0]
+        #             z = x_temp_cycle[3]
+        #     # print(compare_models(model, model1))
+        #     # gens.attach(z)
+        #     # all_gens = np.concatenate(gens)
+        #     z = z.numpy(force=True)
+        #     print(f"the shape of generations with cycles {cycle}", z.shape)
+        #     np.save(f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/gens_cycle_{cycle}.npy", z)
     # -write out to text file
     # (trainset, testset), config = get_all_data(
     #     name="CIFAR100", data_dir=args.d_dir, verbose=True,
     #     normalize = utils.checkattr(args, "normalize"), augment = utils.checkattr(args, "augment"),exception=(args.seed==0),
     # )
-    (trainset, testset), config = get_context_set(
-        name="CIFAR100", scenario=args.scenario, contexts=1, data_dir=args.d_dir,
-        normalize=checkattr(args, "normalize"), verbose=verbose, exception=(args.seed==0),
-        singlehead=checkattr(args, 'singlehead'), train_set_per_class=checkattr(args, 'gen_classifier')
-    )
     # (_, testset), config = get_context_set(
     #     name="CIFAR100", scenario=args.scenario, contexts=1, data_dir=args.d_dir,
     #     normalize=checkattr(args, "normalize"), verbose=verbose, exception=(args.seed==0),
     #     singlehead=checkattr(args, 'singlehead'), train_set_per_class=True
     # )
     # test_loader = utils.get_data_loader(testset, batch_size=args.batch, cuda=cuda, drop_last=True)
-    config['size'] = feature_extractor.conv_out_size
-    config['channels'] = feature_extractor.conv_out_channels
-    if (feature_extractor is not None) and args.depth>0:
-        testset = utils.preprocess(feature_extractor, testset, config, batch=args.batch,
-                                         message='<TESTSET> ')
-    acc = evaluate.test_acc(
-            model, testset[0], verbose=False, test_size=None, context_id=None, allowed_classes=None,
-        )
-    logging.info("Accuracy over all classes is ", acc)
-    if args.time:
-        inference_time = time.time() - start
-        time_file = open("{}/time-{}.txt".format(args.r_dir, param_stamp), 'w')
-        time_file.write('{}\n'.format(inference_time))
-        time_file.close()
-        if verbose and args.time:
-            logging.info("Total inference time = {:.1f} seconds\n".format(inference_time))
-    file_name = "{}/acc-{}{}.txt".format(args.r_dir, param_stamp,
-                                         "--S{}".format(args.eval_s) if checkattr(args, 'gen_classifier') else "")
-    output_file = open(file_name, 'w')
-    # output_file.write('{}\n'.format(average_accs))
-    output_file.close()
+
 
     #-------------------------------------------------------------------------------------------------#
 

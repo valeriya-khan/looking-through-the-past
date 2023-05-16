@@ -108,6 +108,20 @@ def load_checkpoint(model, model_dir, verbose=True, name=None, strict=True):
     # if verbose:
     logging.info(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
 
+def load_checkpoint_model(model, model_dir, verbose=True, name=None, strict=True):
+    '''Load saved state (in form of dictionary) at [model_dir] (if name is None, use "model.name") to [model].'''
+    # -path from where to load checkpoint
+    name = model.name if name is None else name
+    path = os.path.join(model_dir, name)
+    # load parameters (i.e., [model] will now have the state of the loaded model)
+    checkpoint = torch.load(path)
+    model.load_state_dict(checkpoint['state'], strict=strict)
+    if 'mask_dict' in checkpoint:
+        model.mask_dict = checkpoint['mask_dict']
+    # notify that we succesfully loaded the checkpoint
+    if verbose:
+        print(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
+
 ##-------------------------------------------------------------------------------------------------------------------##
 
 ################################
