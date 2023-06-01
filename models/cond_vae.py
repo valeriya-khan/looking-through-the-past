@@ -8,7 +8,7 @@ from models.fc.nets import MLP,MLP_gates
 from models.conv.nets import ConvLayers,DeconvLayers
 from models.cl.continual_learner import ContinualLearner
 from models.utils import loss_functions as lf, modules
-
+import logging
 
 class CondVAE(ContinualLearner):
     """Class for conditional variational auto-encoder (cond-VAE) model."""
@@ -238,7 +238,8 @@ class CondVAE(ContinualLearner):
         # -put inputs through decoder
         hD = self.fromZ(z, gate_input=gate_input) if self.dg_gates else self.fromZ(z)
         image_features = self.fcD(hD, gate_input=gate_input) if self.dg_gates else self.fcD(hD)
-        # image_recon = self.convD(self.to_image(image_features))
+        if self.experiment!="CIFAR50":
+            image_features = self.convD(self.to_image(image_features))
         return image_features
 
     def forward(self, x, gate_input=None, full=False, reparameterize=True, **kwargs):
@@ -541,6 +542,10 @@ class CondVAE(ContinualLearner):
         ###-----Prediction loss-----###
         if y is not None and y_hat is not None:
             predL = F.cross_entropy(input=y_hat, target=y, reduction='none')
+            # m = nn.Softmax(dim=0)
+            # topkyhat, topkyhat_ind=torch.topk(m(y_hat[0]), 3)
+            # print(topkyhat)
+            # print(topkyhat_ind, y[0])
             #--> no reduction needed, summing over classes is "implicit"
             predL = lf.weighted_average(predL, weights=batch_weights, dim=0)  # -> average over batch
         else:
