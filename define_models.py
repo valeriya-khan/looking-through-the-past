@@ -289,7 +289,7 @@ def init_params(model, args, verbose=False):
         #     not hasattr(args, 'convE_ltag') or args.convE_ltag=="none"
         # ) else "{}-{}{}".format(model.convE.name, args.convE_ltag,
         #                         "-s{}".format(args.seed) if checkattr(args, 'seed_to_ltag') else "")
-        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_seed_{args.seed}_0.pth"
+        load_name = args.m_dir + f"/finetune_seed_{args.seed}_0.pth"
         utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
 
     ## Freeze some parameters?
