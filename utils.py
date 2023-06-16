@@ -69,10 +69,29 @@ def load_object(path):
 ## Model-saving and -loading functions ##
 #########################################
 
-def save_checkpoint(model, model_dir, verbose=True, name=None):
+def save_checkpoint_old(model, model_dir, verbose=True, name=None):
     '''Save state of [model] as dictionary to [model_dir] (if name is None, use "model.name").'''
     # -name/path to store the checkpoint
     name = model.name if name is None else name
+    path = os.path.join(model_dir, name)
+    # -if required, create directory in which to save checkpoint
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    # -create the dictionary containing the checkpoint
+    checkpoint = {'state': model.state_dict()}
+    if hasattr(model, 'mask_dict') and model.mask_dict is not None:
+        checkpoint['mask_dict'] = model.mask_dict
+    # -(try to) save the checkpoint
+    try:
+        torch.save(checkpoint, path)
+        if verbose:
+            logging.info(' --> saved model {name} to {path}'.format(name=name, path=model_dir))
+    except OSError:
+        logging.info(" --> saving model '{}' failed!!".format(name))
+def save_checkpoint(model, model_dir, verbose=True, name=None):
+    '''Save state of [model] as dictionary to [model_dir] (if name is None, use "model.name").'''
+    # -name/path to store the checkpoint
+    name = model.model.__class__.__name__ if name is None else name
     path = os.path.join(model_dir, name)
     # -if required, create directory in which to save checkpoint
     if not os.path.exists(model_dir):
@@ -108,7 +127,7 @@ def load_checkpoint(model, model_dir, verbose=True, name=None, strict=True):
     # if verbose:
     logging.info(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
 
-def load_checkpoint_model(model, model_dir, verbose=True, name=None, strict=True):
+def load_checkpoint_old(model, model_dir, verbose=True, name=None, strict=True):
     '''Load saved state (in form of dictionary) at [model_dir] (if name is None, use "model.name") to [model].'''
     # -path from where to load checkpoint
     name = model.name if name is None else name
@@ -120,7 +139,7 @@ def load_checkpoint_model(model, model_dir, verbose=True, name=None, strict=True
         model.mask_dict = checkpoint['mask_dict']
     # notify that we succesfully loaded the checkpoint
     if verbose:
-        print(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
+        logging.info(' --> loaded checkpoint of {name} from {path}'.format(name=name, path=model_dir))
 
 ##-------------------------------------------------------------------------------------------------------------------##
 
@@ -227,7 +246,42 @@ def bias_init(model, strategy="constant", value=0.01):
 
 ##-------------------------------------------------------------------------------------------------------------------##
 
-def preprocess(feature_extractor, dataset_list, config, batch=128, message='<PREPROCESS>'):
+def preprocess(feature_extractor, dataset_list, config, args, batch=128, message='<PREPROCESS>'):
+    '''Put a list of datasets through a feature-extractor, to return a new list of pre-processed datasets.'''
+    # device = feature_extractor._device()
+    device='cuda'
+    new_dataset_list = []
+    progress_bar = tqdm.tqdm(total=len(dataset_list))
+    progress_bar.set_description('{} | dataset {}/{} |'.format(message, 0, len(dataset_list)))
+    # print(len(dataset_list))
+    feature_extractor = feature_extractor.to(device)
+    for dataset_id in range(len(dataset_list)):
+        # loader = get_data_loader(dataset_list[dataset_id], batch_size=batch, drop_last=False,
+        #                          cuda=feature_extractor._is_on_cuda())
+        loader = get_data_loader(dataset_list[dataset_id], batch_size=batch, drop_last=False,
+                                 cuda=True)
+        # -pre-allocate tensors, which will be filled slice-by-slice
+        if args.experiment=="CIFAR50":
+            all_features = torch.empty((len(loader.dataset), 4096))
+        else:
+            all_features = torch.empty((len(loader.dataset), 4608))
+        all_labels = torch.empty((len(loader.dataset)), dtype=torch.long)
+        count = 0
+        # print(all_features.shape)
+        for x, y in loader:
+            # print(x.shape)
+            x = feature_extractor(x.to(device)).cpu()
+            # print(x.shape)
+            # print(x.shape)
+            all_features[count:(count+x.shape[0])] = x
+            all_labels[count:(count+x.shape[0])] = y
+            count += x.shape[0]
+        new_dataset_list.append(TensorDataset(all_features, all_labels))
+        progress_bar.update(1)
+        progress_bar.set_description('{} | dataset {}/{} |'.format(message, dataset_id + 1, len(dataset_list)))
+    progress_bar.close()
+    return new_dataset_list
+def preprocess_old(feature_extractor, dataset_list, config, batch=128, message='<PREPROCESS>'):
     '''Put a list of datasets through a feature-extractor, to return a new list of pre-processed datasets.'''
     device = feature_extractor._device()
     new_dataset_list = []
@@ -238,14 +292,13 @@ def preprocess(feature_extractor, dataset_list, config, batch=128, message='<PRE
         loader = get_data_loader(dataset_list[dataset_id], batch_size=batch, drop_last=False,
                                  cuda=feature_extractor._is_on_cuda())
         # -pre-allocate tensors, which will be filled slice-by-slice
-        all_features = torch.empty((len(loader.dataset), 4096))
+        all_features = torch.empty((len(loader.dataset), config['channels'], config['size'], config['size']))
         all_labels = torch.empty((len(loader.dataset)), dtype=torch.long)
         count = 0
         # print(all_features.shape)
         for x, y in loader:
             # print(x.shape)
             x = feature_extractor(x.to(device)).cpu()
-            # print(x.shape)
             # print(x.shape)
             all_features[count:(count+x.shape[0])] = x
             all_labels[count:(count+x.shape[0])] = y

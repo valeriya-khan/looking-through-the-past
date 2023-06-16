@@ -21,7 +21,53 @@ def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
     [iters]             <int> (max) number of iterations (i.e., batches) to train for
     [loss_cbs]          <list> of callback-<functions> to keep track of training progress
     [eval_cbs]          <list> of callback-<functions> to evaluate model on separate data-set'''
+    # device = model._device()
+    device='cuda'
 
+    # Create progress-bar (with manual control)
+    bar = tqdm.tqdm(total=iters)
+
+    iteration = epoch = 0
+    model = model.to(device)
+    while iteration < iters:
+        epoch += 1
+
+        # Loop over all batches of an epoch
+        for batch_idx, (data, y) in enumerate(train_loader):
+            iteration += 1
+
+            # Perform training-step on this batch
+            data, y = data.to(device), y.to(device)
+            # loss_dict = model.train_a_batch(data, y=y)
+            model.train()
+            model.optimizer.zero_grad()
+            y_hat = model(data)
+            predL = None if y is None else F.cross_entropy(input=y_hat, target=y, reduction='mean')
+            predL.backward()
+            model.optimizer.step()
+            # Fire training-callbacks (for visualization of training-progress)
+            # for loss_cb in loss_cbs:
+            #     if loss_cb is not None:
+            #         loss_cb(bar, iteration, loss_dict)
+
+            # Fire evaluation-callbacks (to be executed every [eval_log] iterations, as specified within the functions)
+            for eval_cb in eval_cbs:
+                if eval_cb is not None:
+                    eval_cb(model, iteration)
+
+            # Break if max-number of iterations is reached
+            if iteration == iters:
+                bar.close()
+                break
+def train_old(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
+    '''Train a model with a "train_a_batch" method for [iters] iterations on data from [train_loader].
+
+    [model]             model to optimize
+    [train_loader]      <dataloader> for training [model] on
+    [iters]             <int> (max) number of iterations (i.e., batches) to train for
+    [loss_cbs]          <list> of callback-<functions> to keep track of training progress
+    [eval_cbs]          <list> of callback-<functions> to evaluate model on separate data-set'''
+    # device = model._device()
     device = model._device()
 
     # Create progress-bar (with manual control)
@@ -141,7 +187,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             # -for Class-IL scenario, the active classes are determined by [model.neg_samples]
             if model.neg_samples=="all-so-far":
                 # --> one <list> with active classes of all contexts so far
-                if model.experiment!="CIFAR50":
+                if model.experiment!="CIFAR50" and model.experiment!='MINI':
                     active_classes = list(range(model.classes_per_context * context))
                 elif context==1:
                     active_classes = list(range(50))
@@ -152,7 +198,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 active_classes = None
             elif model.neg_samples=="current":
                 #--> only those classes in the current or replayed context are active (i.e., train "as if Task-IL")
-                if model.experiment!="CIFAR50":
+                if model.experiment!="CIFAR50" and model.experiment!='MINI':
                     active_classes = [list(
                         range(model.classes_per_context * i, model.classes_per_context * (i + 1))
                     ) for i in range(context)]
@@ -238,7 +284,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 binary_distillation = hasattr(model, "binaryCE") and model.binaryCE and model.binaryCE_distill
                 if binary_distillation and model.scenario in ("class", "all") and (previous_model is not None):
                     with torch.no_grad():
-                        if model.experiment!="CIFAR50":
+                        if model.experiment!="CIFAR50" and model.experiment!='MINI':
                             scores = previous_model.classify(
                                 x, no_prototypes=True
                             )[:, :(model.classes_per_context * (context - 1))]
@@ -272,7 +318,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         with torch.no_grad():
                             scores_ = previous_model.classify(x_, no_prototypes=True)
                         if model.scenario=="class" and model.neg_samples=="all-so-far":
-                            if model.experiment!="CIFAR50":
+                            if model.experiment!="CIFAR50" and model.experiment!='MINI':
                                 scores_ = scores_[:, :(model.classes_per_context*(context-1))]
                             else:
                                 scores_ = scores_[:, :(50 + model.classes_per_context*(context-2))]
@@ -329,7 +375,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         context_used.append(x_temp_[2])
                 else:
                     # -which classes are allowed to be generated? (relevant if conditional generator / decoder-gates)
-                    if model.experiment=="CIFAR50":
+                    if model.experiment=="CIFAR50" and model.experiment!='MINI':
                         allowed_classes = None if model.scenario=="domain" else list(
                             range(50 + model.classes_per_context*(context-2))
                         )            
@@ -359,7 +405,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         _, label = torch.max(scores_, dim=1)
                         _,_,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True, gate_input = label)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
-                        if model.experiment=="CIFAR50":
+                        if model.experiment=="CIFAR50" and model.experiment!='MINI':
                             scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
                         else:
                             scores_ = scores_[:, :(model.classes_per_context * (context - 1))]
@@ -476,7 +522,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             # reduce examplar-sets (only needed when '--use-full-capacity' is selected)
             model.reduce_memory_sets(samples_per_class)
             # for each new class trained on, construct examplar-set
-            if model.experiment!="CIFAR50":
+            if model.experiment!="CIFAR50" and model.experiment!='MINI':
                 new_classes = list(range(model.classes_per_context)) if (
                         model.scenario=="domain" or per_context_singlehead
                 ) else list(range(model.classes_per_context*(context-1), model.classes_per_context*context))
@@ -536,7 +582,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     if per_context:
                         previous_datasets = []
                         for context_id in range(context):
-                            if model.experiment!="CIFAR50":
+                            if model.experiment!="CIFAR50" and model.experiment!='MINI':
                                 previous_datasets.append(MemorySetDataset(
                                     model.memory_sets[
                                         (model.classes_per_context * context_id):(model.classes_per_context*(context_id+1))
@@ -565,7 +611,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                                     ) else (lambda y, x=model.classes_per_context: y % x)
                                 ))
                     else:
-                        if model.experiment!="CIFAR50":
+                        if model.experiment!="CIFAR50" and model.experiment!='MINI':
                             target_transform = None if not model.scenario=="domain" else (
                                 lambda y, x=model.classes_per_context: y % x
                             )

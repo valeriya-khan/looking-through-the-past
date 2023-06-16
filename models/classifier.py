@@ -18,7 +18,7 @@ class Classifier(ContinualLearner, MemoryBuffer):
                  num_blocks=2, global_pooling=False, no_fnl=True, conv_gated=False,
                  # -fc-layers
                  fc_layers=3, fc_units=1000, fc_drop=0, fc_bn=True, fc_nl="relu", fc_gated=False,
-                 bias=True, excitability=False, excit_buffer=False, phantom=False):
+                 bias=True, excitability=False, excit_buffer=False, phantom=False, experiment="CIFAR100", model_type="conv"):
 
         # configurations
         super().__init__()
@@ -48,7 +48,10 @@ class Classifier(ContinualLearner, MemoryBuffer):
         )
         self.flatten = modules.Flatten()  # flatten image to 2D-tensor
         #------------------------------calculate input/output-sizes--------------------------------#
-        self.conv_out_units = self.convE.out_units(image_size)
+        if model_type=='conv':
+            self.conv_out_units = self.convE.out_units(image_size)
+        else:
+            self.conv_out_units = 4608
         self.conv_out_size = self.convE.out_size(image_size)
         self.conv_out_channels = self.convE.out_channels
         #------------------------------------------------------------------------------------------#

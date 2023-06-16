@@ -10,7 +10,7 @@ import train
 import options
 import define_models as define
 from param_values import check_for_errors,set_default_values
-
+import torchvision.models as models
 
 ## Function for specifying input-options and organizing / checking them
 def handle_inputs():
@@ -76,10 +76,10 @@ def run(args, verbose=False):
     # Specify model
     if verbose:
         print("\n\n " +' DEFINE MODEL '.center(70, '*'))
-    cnn = define.define_standard_classifier(args=args, config=config, device=device, depth=args.depth)
-
+    # cnn = define.define_standard_classifier(args=args, config=config, device=device, depth=args.depth)
+    cnn = models.resnet18(num_classes=50)
     # Initialize (pre-trained) parameters
-    define.init_params(cnn, args)
+    define.init_params(cnn, args,depth=depth)
 
     # Set optimizer
     optim_list = [{'params': filter(lambda p: p.requires_grad, cnn.parameters()), 'lr': args.lr}]
@@ -125,21 +125,30 @@ def run(args, verbose=False):
     # (Pre)train model
     if verbose:
         print("\n\n " +' TRAINING '.center(70, '*'))
-    train.train(cnn, train_loader, iters, loss_cbs=loss_cbs, eval_cbs=eval_cbs)
-
+    if args.model_type=="conv":
+        train.train_old(cnn, train_loader, iters, loss_cbs=loss_cbs, eval_cbs=eval_cbs)
+    else:
+        train.train(cnn, train_loader, iters, loss_cbs=loss_cbs, eval_cbs=eval_cbs)
+        
     # Save (pre)trained conv-layers and the full model
     if checkattr(args, 'save'):
         # -conv-layers
-        save_name = cnn.convE.name if (
-            not hasattr(args, 'convE_stag') or args.convE_stag=="none"
-        ) else "{}-{}{}".format(cnn.convE.name, args.convE_stag,
-                                "-s{}".format(args.seed) if checkattr(args, 'seed_to_stag') else "")
-        utils.save_checkpoint(cnn.convE, args.m_dir, name=save_name)
+        if args.model_type=='conv':
+            save_name = cnn.convE.name if (
+                not hasattr(args, 'convE_stag') or args.convE_stag=="none"
+            ) else "{}-{}{}".format(cnn.convE.name, args.convE_stag,
+                                    "-s{}".format(args.seed) if checkattr(args, 'seed_to_stag') else "")
+            utils.save_checkpoint(cnn.convE, args.m_dir, name=save_name)
+            save_name = cnn.name if (
+                not hasattr(args, 'full_stag') or args.full_stag=="none"
+            ) else "{}-{}".format(cnn.name, args.full_stag)
+            utils.save_checkpoint(cnn, args.m_dir, name=save_name)
         # -full model
-        save_name = cnn.name if (
-            not hasattr(args, 'full_stag') or args.full_stag=="none"
-        ) else "{}-{}".format(cnn.name, args.full_stag)
-        utils.save_checkpoint(cnn, args.m_dir, name=save_name)
+        else:
+            save_name = "resnet18" if (
+                not hasattr(args, 'full_stag') or args.full_stag=="none"
+            ) else "{}-{}".format("resnet18", args.full_stag)
+            utils.save_checkpoint(cnn, args.m_dir, name=save_name)
 
     #-------------------------------------------------------------------------------------------------#
 
