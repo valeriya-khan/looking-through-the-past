@@ -70,9 +70,9 @@ def add_eval_options(parser, main=False, comparison=False, pretrain=False, compa
 
 def add_problem_options(parser, pretrain=False, no_boundaries=False, **kwargs):
     problem_params = parser.add_argument_group('Problem Specification')
-    cl_protocols = ['splitMNIST', 'permMNIST', 'CIFAR10', 'CIFAR100', 'CIFAR50']
+    cl_protocols = ['splitMNIST', 'permMNIST', 'CIFAR10', 'CIFAR100', 'CIFAR50', 'MINI']
     problem_params.add_argument('--experiment', type=str, default='CIFAR10' if pretrain else 'splitMNIST',
-                             choices=['CIFAR10', 'CIFAR100', 'CIFAR50', 'MNIST', 'MNIST32'] if pretrain else cl_protocols)
+                             choices=['CIFAR10', 'CIFAR100', 'CIFAR50', 'MNIST', 'MNIST32','MINI'] if pretrain else cl_protocols)
     if no_boundaries:
         problem_params.add_argument('--stream', type=str, default='fuzzy-boundaries',
                                     choices=['fuzzy-boundaries', 'academic-setting', 'random'])
@@ -95,6 +95,7 @@ def add_model_options(parser, pretrain=False, compare_replay=False, **kwargs):
     model = parser.add_argument_group('Parameters Main Model')
     # -convolutional layers
     model.add_argument('--conv-type', type=str, default="standard", choices=["standard", "resNet"])
+    model.add_argument('--model-type', type=str, default="conv", choices=["conv", "resnet"])
     model.add_argument('--n-blocks', type=int, default=2, help="# blocks per conv-layer (only for 'resNet')")
     model.add_argument('--depth', type=int, default=None, help="# of convolutional layers (0 = only fc-layers)")
     model.add_argument('--reducing-layers', type=int, dest='rl', help="# of layers with stride (=image-size halved)")

@@ -22,6 +22,7 @@ from models.cl import fromp_optimizer
 import logging
 from git import Repo
 from models import resnet32
+import torchvision.models as models
 ## Function for specifying input-options and organizing / checking them
 def handle_inputs():
     # Set indicator-dictionary for correctly retrieving / checking input options
@@ -104,13 +105,23 @@ def run(args, verbose=False):
     if use_feature_extractor and depth>0:
         if verbose:
             logging.info("\n\n " + ' DEFINE FEATURE EXTRACTOR '.center(70, '*'))
-        # feature_extractor = define.define_feature_extractor(args=args, config=config, device=device)
+        
         # - initialize (pre-trained) parameters
-        feature_extractor = resnet32.resnet32(num_classes=50, device=device)
-        define.init_params(feature_extractor, args, verbose=verbose)
+        if args.model_type=="resnet" and args.experiment=="CIFAR50":
+            feature_extractor = resnet32.resnet32(num_classes=50, device=device)
+            define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
+            feature_extractor.avgpool = torch.nn.Identity()
+            feature_extractor.fc = torch.nn.Identity()
+        elif args.model_type=="resnet" and args.experiment=="MINI":
+            feature_extractor = models.resnet18(num_classes=50)
+            define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
+            feature_extractor.avgpool = torch.nn.Identity()
+            feature_extractor.fc = torch.nn.Identity()
+        else:
+            feature_extractor = define.define_feature_extractor(args=args, config=config, device=device)
+            define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
         # - freeze the parameters & set model to eval()-mode
-        feature_extractor.avgpool = torch.nn.Identity()
-        feature_extractor.fc = torch.nn.Identity()
+        
         for param in feature_extractor.parameters():
             param.requires_grad = False
         feature_extractor.eval()
@@ -119,8 +130,16 @@ def run(args, verbose=False):
             utils.print_model_info(feature_extractor)
         # - reset size and # of channels to reflect the extracted features rather than the original images
         config = config.copy()  # -> make a copy to avoid overwriting info in the original config-file
-        config['size'] = 64
-        config['channels'] = 1
+        
+        if args.model_type=="conv":
+            config['size'] = feature_extractor.conv_out_size
+            config['channels'] = feature_extractor.conv_out_channels
+        elif args.experiment=="CIFAR50":
+            config['size'] = 64
+            config['channels'] = 1
+        else:
+            config['size'] = 84
+            config['channels'] = 3
         depth = 0
     else:
         feature_extractor = None
@@ -129,10 +148,16 @@ def run(args, verbose=False):
     if (feature_extractor is not None) and args.depth>0:
         if verbose:
             logging.info("\n\n " + ' PUT DATA TRHOUGH FEATURE EXTRACTOR '.center(70, '*'))
-        train_datasets = utils.preprocess(feature_extractor, train_datasets, config, batch=args.batch,
-                                          message='<TRAINSET>')
-        test_datasets = utils.preprocess(feature_extractor, test_datasets, config, batch=args.batch,
-                                         message='<TESTSET> ')
+        if args.model_type=="conv":
+            train_datasets = utils.preprocess_old(feature_extractor, train_datasets, config, batch=args.batch,
+                                              message='<TRAINSET>')
+            test_datasets = utils.preprocess_old(feature_extractor, test_datasets, config, batch=args.batch,
+                                             message='<TESTSET> ')
+        else:
+            train_datasets = utils.preprocess(feature_extractor, train_datasets, config, batch=args.batch,
+                                            message='<TRAINSET>', args=args)
+            test_datasets = utils.preprocess(feature_extractor, test_datasets, config, batch=args.batch,
+                                            message='<TESTSET> ', args=args)
 
     #-------------------------------------------------------------------------------------------------#
 
@@ -155,7 +180,7 @@ def run(args, verbose=False):
             getattr(model, 'vae{}'.format(network_id)) if checkattr(args, 'gen_classifier') else model
         )
         # ... initialize / use pre-trained / freeze model-parameters, and
-        define.init_params(model_to_set, args)
+        define.init_params(model_to_set, args, depth=depth)
         # ... define optimizer (only include parameters that "requires_grad")
         if not checkattr(args, 'fromp'):
             model_to_set.optim_list = [{'params': filter(lambda p: p.requires_grad, model_to_set.parameters()),
@@ -272,7 +297,7 @@ def run(args, verbose=False):
         # -specify architecture
         generator = define.define_vae(args=args, config=config, device=device, depth=depth)
         # -initialize parameters
-        define.init_params(generator, args, verbose=verbose)
+        define.init_params(generator, args, depth=depth, verbose=verbose)
         # -set optimizer(s)
         generator.optim_list = [{'params': filter(lambda p: p.requires_grad, generator.parameters()),
                                  'lr': args.lr_gen}]
@@ -333,10 +358,16 @@ def run(args, verbose=False):
     if verbose:
         if verbose:
             logging.info('\n\n' + ' PARAMETER STAMP '.center(70, '*'))
-    param_stamp = get_param_stamp(
-        args, model.name, replay_model_name=generator.name if train_gen else None,
-        feature_extractor_name= feature_extractor.name if (feature_extractor is not None) else None, verbose=verbose,
-    )
+    if args.model_type=="conv":
+        param_stamp = get_param_stamp(
+            args, model.name, replay_model_name=generator.name if train_gen else None,
+            feature_extractor_name= feature_extractor.name if (feature_extractor is not None) else None, verbose=verbose,
+        )
+    else:
+        param_stamp = get_param_stamp(
+            args, model.name, replay_model_name=generator.name if train_gen else None,
+            feature_extractor_name= feature_extractor.__class__.__name__ if (feature_extractor is not None) else None, verbose=verbose,
+        )
 
     #-------------------------------------------------------------------------------------------------#
 
@@ -412,7 +443,7 @@ def run(args, verbose=False):
             train_gen_classifier if checkattr(args, 'gen_classifier') else train_cl
         )
         # -perform training
-        if args.experiment=='CIFAR50':
+        if args.experiment=='CIFAR50' or args.experiment=='MINI':
             # first_iters = args.iters*(len(train_datasets)-1)
             first_iters = 10000
         else:
@@ -434,18 +465,30 @@ def run(args, verbose=False):
                 logging.info("Total training time = {:.1f} seconds\n".format(training_time))
         # -save trained model(s), if requested
         if args.save:
-            save_name = "mM-{}".format(param_stamp) if (
-                    not hasattr(args, 'full_stag') or args.full_stag == "none"
-            ) else "{}-{}".format(model.name, args.full_stag)
-            utils.save_checkpoint(model, args.m_dir, name=save_name, verbose=verbose)
+            if args.model_type=="conv":
+                save_name = "mM-{}".format(param_stamp) if (
+                        not hasattr(args, 'full_stag') or args.full_stag == "none"
+                ) else "{}-{}".format(model.name, args.full_stag)
+                utils.save_checkpoint_old(model, args.m_dir, name=save_name, verbose=verbose)
+            else:
+                save_name = "mM-{}".format(param_stamp) if (
+                        not hasattr(args, 'full_stag') or args.full_stag == "none"
+                ) else "{}-{}".format(model.__class__.__name__, args.full_stag)
+                utils.save_checkpoint(model, args.m_dir, name=save_name, verbose=verbose)
     else:
         # Load previously trained model(s) (if goal is to only evaluate previously trained model)
         if verbose:
             logging.info("\nLoading parameters of previously trained model...")
-        load_name = "mM-{}".format(param_stamp) if (
-            not hasattr(args, 'full_ltag') or args.full_ltag == "none"
-        ) else "{}-{}".format(model.name, args.full_ltag)
-        utils.load_checkpoint(model, args.m_dir, name=load_name, verbose=verbose, strict=False)
+        if args.model_type=="conv":
+            load_name = "mM-{}".format(param_stamp) if (
+                not hasattr(args, 'full_ltag') or args.full_ltag == "none"
+            ) else "{}-{}".format(model.name, args.full_ltag)
+            utils.load_checkpoint_old(model, args.m_dir, name=load_name, verbose=verbose, strict=False)
+        else:
+            load_name = "mM-{}".format(param_stamp) if (
+                not hasattr(args, 'full_ltag') or args.full_ltag == "none"
+            ) else "{}-{}".format(model.__class__.__name__, args.full_ltag)
+            utils.load_checkpoint(model, args.m_dir, name=load_name, verbose=verbose, strict=False)
 
     #-------------------------------------------------------------------------------------------------#
 

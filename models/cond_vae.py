@@ -25,7 +25,7 @@ class CondVAE(ContinualLearner):
                  recon_loss='BCE', network_output="sigmoid", deconv_type="standard",
                  dg_gates=False, dg_type="context", dg_prop=0., contexts=5, scenario="task",experiment="CIFAR100", device='cuda',
                  # -classifer
-                 classifier=True, **kwargs):
+                 classifier=True, model_type='conv', **kwargs):
         '''Class for variational auto-encoder (VAE) models.'''
 
         # Set configurations for setting up the model
@@ -82,8 +82,13 @@ class CondVAE(ContinualLearner):
                                 gated=conv_gated)
         # -flatten image to 2D-tensor
         self.flatten = modules.Flatten()
+        self.model_type=model_type
         #------------------------------calculate input/output-sizes--------------------------------#
-        self.conv_out_units = self.convE.out_units(image_size)
+        if model_type=="conv" or experiment=="CIFAR50":
+            self.conv_out_units = self.convE.out_units(image_size)
+        else:
+            self.conv_out_units = 4608
+
         self.conv_out_size = self.convE.out_size(image_size)
         self.conv_out_channels = self.convE.out_channels
         #------------------------------------------------------------------------------------------#
@@ -111,14 +116,25 @@ class CondVAE(ContinualLearner):
             self.fromZ = fc_layer(z_dim, real_h_dim_down, batch_norm=(out_nl and fc_bn), nl=fc_nl if out_nl else "none")
         # -> if 'gp' is used in forward pass, size of first/final hidden layer differs between forward and backward pass
         if self.dg_gates:
-            self.fcD = MLP_gates(input_size=fc_units, output_size=self.convE.out_units(image_size, ignore_gp=True),
-                                 layers=fc_layers-1, hid_size=fc_units, drop=fc_drop, batch_norm=fc_bn, nl=fc_nl,
-                                 gate_size=self.gate_size, gating_prop=dg_prop, device=device,
-                                 output=self.network_output if self.depth==0 else 'normal')
+            if model_type=="conv":
+                self.fcD = MLP_gates(input_size=fc_units, output_size=self.convE.out_units(image_size, ignore_gp=True),
+                                    layers=fc_layers-1, hid_size=fc_units, drop=fc_drop, batch_norm=fc_bn, nl=fc_nl,
+                                    gate_size=self.gate_size, gating_prop=dg_prop, device=device,
+                                    output=self.network_output if self.depth==0 else 'normal')
+            else:
+                self.fcD = MLP_gates(input_size=fc_units, output_size=self.conv_out_units,
+                                    layers=fc_layers-1, hid_size=fc_units, drop=fc_drop, batch_norm=fc_bn, nl=fc_nl,
+                                    gate_size=self.gate_size, gating_prop=dg_prop, device=device,
+                                    output=self.network_output if self.depth==0 else 'normal')
         else:
-            self.fcD = MLP(input_size=fc_units, output_size=self.convE.out_units(image_size, ignore_gp=True),
-                           layers=fc_layers-1, hid_size=fc_units, drop=fc_drop, batch_norm=fc_bn, nl=fc_nl,
-                           gated=fc_gated, output=self.network_output if self.depth==0 else 'normal')
+            if model_type=="conv":
+                self.fcD = MLP(input_size=fc_units, output_size=self.convE.out_units(image_size, ignore_gp=True),
+                            layers=fc_layers-1, hid_size=fc_units, drop=fc_drop, batch_norm=fc_bn, nl=fc_nl,
+                            gated=fc_gated, output=self.network_output if self.depth==0 else 'normal')
+            else:
+                self.fcD = MLP(input_size=fc_units, output_size=self.conv_out_units,
+                            layers=fc_layers-1, hid_size=fc_units, drop=fc_drop, batch_norm=fc_bn, nl=fc_nl,
+                            gated=fc_gated, output=self.network_output if self.depth==0 else 'normal')
         # to image-shape
         self.to_image = modules.Reshape(image_channels=self.convE.out_channels if self.depth>0 else image_channels)
         # through deconv-layers
@@ -238,8 +254,9 @@ class CondVAE(ContinualLearner):
         # -put inputs through decoder
         hD = self.fromZ(z, gate_input=gate_input) if self.dg_gates else self.fromZ(z)
         image_features = self.fcD(hD, gate_input=gate_input) if self.dg_gates else self.fcD(hD)
-        if self.experiment!="CIFAR50":
+        if self.model_type=="conv":
             image_features = self.convD(self.to_image(image_features))
+        # image_features = self.convD(self.to_image(image_features))
         return image_features
 
     def forward(self, x, gate_input=None, full=False, reparameterize=True, **kwargs):
@@ -620,7 +637,7 @@ class CondVAE(ContinualLearner):
 
             # Weigh losses as requested
             loss_cur = self.lamda_rcl*reconL + self.lamda_vl*variatL + self.lamda_pl*predL
-
+            # loss_cur = self.lamda_pl*predL
             # Calculate training-accuracy
             if y is not None and y_hat is not None:
                 _, predicted = y_hat.max(1)

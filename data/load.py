@@ -5,6 +5,9 @@ from torch.utils.data import ConcatDataset
 from data.manipulate import permutate_image_pixels, SubDataset, TransformedDataset
 from data.available import AVAILABLE_DATASETS, AVAILABLE_TRANSFORMS, DATASET_CONFIGS
 import logging
+from PIL import Image
+
+
 
 def get_dataset(name, type='train', download=True, capacity=None, permutation=None, dir='./store/datasets',
                 verbose=False, augment=False, normalize=False, target_transform=None):
@@ -14,7 +17,10 @@ def get_dataset(name, type='train', download=True, capacity=None, permutation=No
     dataset_class = AVAILABLE_DATASETS[data_name]
 
     # specify image-transformations to be applied
-    transforms_list = [*AVAILABLE_TRANSFORMS['augment']] if augment else []
+    if data_name!='MINI':
+        transforms_list = [*AVAILABLE_TRANSFORMS['augment']] if augment else []
+    else:
+        transforms_list = [*AVAILABLE_TRANSFORMS['augment_mini']] if augment else []
     transforms_list += [*AVAILABLE_TRANSFORMS[name]]
     if normalize:
         transforms_list += [*AVAILABLE_TRANSFORMS[name+"_norm"]]
@@ -46,7 +52,7 @@ def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=Fals
     config['normalize'] = normalize
     if normalize:
         config['denormalize'] = AVAILABLE_TRANSFORMS[name+"_denorm"]
-    if name!="CIFAR50":
+    if name!="CIFAR50" and name!='MINI':
         config['output_units'] = config['classes']
         trainset = get_dataset(name, type='train', dir=data_dir, verbose=verbose, normalize=normalize, augment=augment)
         testset = get_dataset(name, type='test', dir=data_dir, verbose=verbose, normalize=normalize)
@@ -64,7 +70,7 @@ def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=Fals
         labels_per_dataset_test = list(np.array(range(classes_per_first_context)))
         trainset = SubDataset(trainset, labels_per_dataset_train)
         testset = SubDataset(testset, labels_per_dataset_test)
-        config['output_units'] = 50   
+        config['output_units'] = 100 
     # Return tuple of data-sets and config-dictionary
     return (trainset, testset), config
 def get_all_data(name, data_dir="./store/datasets", normalize=False, augment=False, verbose=False, exception=False):
@@ -72,7 +78,7 @@ def get_all_data(name, data_dir="./store/datasets", normalize=False, augment=Fal
     config['normalize'] = normalize
     if normalize:
         config['denormalize'] = AVAILABLE_TRANSFORMS[name+"_denorm"]
-    if name!="CIFAR50":
+    if name!="CIFAR50" and name!='MINI':
         config['output_units'] = config['classes']
         trainset = get_dataset(name, type='train', dir=data_dir, verbose=verbose, normalize=normalize, augment=augment)
         testset = get_dataset(name, type='test', dir=data_dir, verbose=verbose, normalize=normalize)
@@ -122,12 +128,14 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         data_type = 'CIFAR100'
     elif name == "CIFAR50":
         data_type = 'CIFAR50'
+    elif name == 'MINI':
+        data_type = 'MINI'
     else:
         raise ValueError('Given undefined experiment: {}'.format(name))
 
     # Get config-dict
     config = DATASET_CONFIGS[data_type].copy()
-    config['normalize'] = normalize if (name=='CIFAR100' or name=='CIFAR50') else False
+    config['normalize'] = normalize if (name=='CIFAR100' or name=='CIFAR50' or name=='MINI') else False
     if config['normalize']:
         config['denormalize'] = AVAILABLE_TRANSFORMS["CIFAR100_denorm"]
     # check for number of contexts
@@ -135,7 +143,7 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         raise ValueError("Experiment '{}' cannot have more than {} contexts!".format(name, config['classes']))
     # -how many classes per context?
     classes_per_context = 10 if name=="permMNIST" else int(np.floor(config['classes'] / contexts))
-    if data_type == 'CIFAR50':
+    if data_type == 'CIFAR50' or data_type == 'MINI':
         classes_per_first_context = 50
         contexts -= 1
         if contexts > 50:
@@ -144,7 +152,7 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
     config['classes_per_context'] = classes_per_context
     config['output_units'] = classes_per_context if (scenario=='domain' or
                                                     (scenario=="task" and singlehead)) else classes_per_context*contexts
-    if data_type == 'CIFAR50':
+    if data_type == 'CIFAR50' or data_type == 'MINI':
         config['output_units'] = classes_per_context*contexts + classes_per_first_context
     # -if only config-dict is needed, return it
     if only_config:
@@ -188,7 +196,7 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         testset = get_dataset(data_type, type="test", dir=data_dir, target_transform=target_transform, verbose=verbose,
                               augment=augment, normalize=normalize)
         # generate labels-per-dataset (if requested, training data is split up per class rather than per context)
-        if data_type!="CIFAR50":
+        if data_type!="CIFAR50"  and data_type != 'MINI':
             labels_per_dataset_train = [[label] for label in range(classes)] if train_set_per_class else [
                 list(np.array(range(classes_per_context))+classes_per_context*context_id) for context_id in range(contexts)
             ]

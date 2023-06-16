@@ -84,7 +84,8 @@ def define_standard_classifier(args, config, device, depth=0):
         fc_nl=args.fc_nl,
         excit_buffer=True,
         phantom=checkattr(args, 'fisher_kfac'),
-        experiment=args.experiment
+        experiment=args.experiment,
+        model_type=args.model_type
     ).to(device)
     # Return model
     return model
@@ -133,6 +134,7 @@ def define_rtf_classifier(args, config, device, depth=0):
         # -classifier
         experiment=args.experiment if hasattr(args, 'scenario') else None,
         classifier=True,
+        model_type=args.model_type
     ).to(device)
     # -return model
     return model
@@ -273,7 +275,7 @@ def define_vae(args, config, device, depth=0):
 ##-------------------------------------------------------------------------------------------------------------------##
 
 ## Function for (re-)initializing the parameters of [model]
-def init_params(model, args, verbose=False):
+def init_params(model, args, depth, verbose=False):
 
     ## Initialization
     # - reinitialize all parameters according to default initialization
@@ -285,14 +287,27 @@ def init_params(model, args, verbose=False):
         utils.bias_init(model, strategy="constant", value=0.01)
 
     ## Use pre-training
-    if utils.checkattr(args, "pre_convE") and hasattr(model, 'name') and model.name=="resnet32":
+    if args.model_type=="conv" and utils.checkattr(args, "pre_convE") and hasattr(model, 'depth') and model.depth>0:
+        load_name = model.convE.name if (
+            not hasattr(args, 'convE_ltag') or args.convE_ltag=="none"
+        ) else "{}-{}{}".format(model.convE.name, args.convE_ltag,
+                                "-s{}".format(args.seed) if checkattr(args, 'seed_to_ltag') else "")
+        utils.load_checkpoint_old(model.convE, model_dir=args.m_dir, name=load_name, verbose=verbose)
+    elif utils.checkattr(args, "pre_convE") and args.experiment=="MINI" and depth>0:
+        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_seed_{args.seed}_resnet18_0.pth"
+        utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
+    elif utils.checkattr(args, "pre_convE") and model.name=="resnet32":
+        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_seed_{args.seed}_0.pth"
+        utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
+    
+    # if utils.checkattr(args, "pre_convE") and model.__class__.__name__=="resnet18":
         # load_name = model.convE.name if (
         #     not hasattr(args, 'convE_ltag') or args.convE_ltag=="none"
         # ) else "{}-{}{}".format(model.convE.name, args.convE_ltag,
         #                         "-s{}".format(args.seed) if checkattr(args, 'seed_to_ltag') else "")
-        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_seed_{args.seed}_0.pth"
-        utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
-
+        # logging.info(model.__class__.__name__)
+        
+        # utils.load_checkpoint_old(model.convE, model_dir=args.m_dir, name=load_name, verbose=verbose)
     ## Freeze some parameters?
     if utils.checkattr(args, "freeze_convE") and hasattr(model, 'convE'):
         for param in model.convE.parameters():
