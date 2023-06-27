@@ -17,10 +17,12 @@ def get_dataset(name, type='train', download=True, capacity=None, permutation=No
     dataset_class = AVAILABLE_DATASETS[data_name]
 
     # specify image-transformations to be applied
-    if data_name!='MINI':
-        transforms_list = [*AVAILABLE_TRANSFORMS['augment']] if augment else []
-    else:
+    if data_name=='MINI':
         transforms_list = [*AVAILABLE_TRANSFORMS['augment_mini']] if augment else []
+    elif data_name=='TINY':
+        transforms_list = [*AVAILABLE_TRANSFORMS['augment_tiny']] if augment else []
+    else:
+        transforms_list = [*AVAILABLE_TRANSFORMS['augment']] if augment else []
     transforms_list += [*AVAILABLE_TRANSFORMS[name]]
     if normalize:
         transforms_list += [*AVAILABLE_TRANSFORMS[name+"_norm"]]
@@ -29,8 +31,11 @@ def get_dataset(name, type='train', download=True, capacity=None, permutation=No
     dataset_transform = transforms.Compose(transforms_list)
 
     # load data-set
-    dataset = dataset_class('{dir}/{name}'.format(dir=dir, name=data_name), train=False if type=='test' else True,
-                            download=download, transform=dataset_transform, target_transform=target_transform)
+    if data_name=='TINY':
+        dataset = dataset_class(f'{dir}/{data_name}/tiny-imagenet-200/{type}', transform=dataset_transform, target_transform=target_transform)
+    else:
+        dataset = dataset_class('{dir}/{name}'.format(dir=dir, name=data_name), train=False if type=='test' else True,
+                                download=download, transform=dataset_transform, target_transform=target_transform)
 
     # print information about dataset on the screen
     if verbose:
@@ -52,7 +57,7 @@ def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=Fals
     config['normalize'] = normalize
     if normalize:
         config['denormalize'] = AVAILABLE_TRANSFORMS[name+"_denorm"]
-    if name!="CIFAR50" and name!='MINI':
+    if name!="CIFAR50" and name!='MINI' and name!='TINY':
         config['output_units'] = config['classes']
         trainset = get_dataset(name, type='train', dir=data_dir, verbose=verbose, normalize=normalize, augment=augment)
         testset = get_dataset(name, type='test', dir=data_dir, verbose=verbose, normalize=normalize)
@@ -65,12 +70,12 @@ def get_singlecontext_datasets(name, data_dir="./store/datasets", normalize=Fals
                                verbose=verbose, augment=augment, normalize=normalize)
         testset = get_dataset(name, type="test", dir=data_dir, target_transform=target_transform, verbose=verbose,
                               augment=augment, normalize=normalize)
-        classes_per_first_context = 50
+        classes_per_first_context = 100 if name=='TINY' else 50
         labels_per_dataset_train = list(np.array(range(classes_per_first_context)))
         labels_per_dataset_test = list(np.array(range(classes_per_first_context)))
         trainset = SubDataset(trainset, labels_per_dataset_train)
         testset = SubDataset(testset, labels_per_dataset_test)
-        config['output_units'] = 100 
+        config['output_units'] = 200 if name=='TINY' else 100
     # Return tuple of data-sets and config-dictionary
     return (trainset, testset), config
 def get_all_data(name, data_dir="./store/datasets", normalize=False, augment=False, verbose=False, exception=False):
@@ -130,29 +135,34 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         data_type = 'CIFAR50'
     elif name == 'MINI':
         data_type = 'MINI'
+    elif name == 'TINY':
+        data_type = 'TINY'
     else:
         raise ValueError('Given undefined experiment: {}'.format(name))
 
     # Get config-dict
     config = DATASET_CONFIGS[data_type].copy()
-    config['normalize'] = normalize if (name=='CIFAR100' or name=='CIFAR50' or name=='MINI') else False
+    config['normalize'] = normalize if (name=='CIFAR100' or name=='CIFAR50' or name=='MINI' or name=='TINY') else False
     if config['normalize']:
-        config['denormalize'] = AVAILABLE_TRANSFORMS["CIFAR100_denorm"]
+        config['denormalize'] = AVAILABLE_TRANSFORMS[name+"_denorm"]
     # check for number of contexts
     if contexts > config['classes'] and not name=="permMNIST":
         raise ValueError("Experiment '{}' cannot have more than {} contexts!".format(name, config['classes']))
     # -how many classes per context?
     classes_per_context = 10 if name=="permMNIST" else int(np.floor(config['classes'] / contexts))
-    if data_type == 'CIFAR50' or data_type == 'MINI':
-        classes_per_first_context = 50
+    if data_type == 'CIFAR50' or data_type == 'MINI' or data_type=='TINY':
+        if data_type=='TINY':
+            classes_per_first_context = 100
+        else:
+            classes_per_first_context = 50
         contexts -= 1
-        if contexts > 50:
+        if contexts > classes_per_first_context:
             raise ValueError("Experiment '{}' cannot have more than {} contexts!".format(name, 50))
-        classes_per_context = int(np.floor(50 / contexts))
+        classes_per_context = int(np.floor(classes_per_first_context / contexts))
     config['classes_per_context'] = classes_per_context
     config['output_units'] = classes_per_context if (scenario=='domain' or
                                                     (scenario=="task" and singlehead)) else classes_per_context*contexts
-    if data_type == 'CIFAR50' or data_type == 'MINI':
+    if data_type == 'CIFAR50' or data_type == 'MINI' or data_type=='TINY':
         config['output_units'] = classes_per_context*contexts + classes_per_first_context
     # -if only config-dict is needed, return it
     if only_config:
@@ -196,7 +206,7 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         testset = get_dataset(data_type, type="test", dir=data_dir, target_transform=target_transform, verbose=verbose,
                               augment=augment, normalize=normalize)
         # generate labels-per-dataset (if requested, training data is split up per class rather than per context)
-        if data_type!="CIFAR50"  and data_type != 'MINI':
+        if data_type!="CIFAR50"  and data_type != 'MINI' and data_type!='TINY':
             labels_per_dataset_train = [[label] for label in range(classes)] if train_set_per_class else [
                 list(np.array(range(classes_per_context))+classes_per_context*context_id) for context_id in range(contexts)
             ]

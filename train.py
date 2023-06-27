@@ -35,7 +35,7 @@ def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
         # Loop over all batches of an epoch
         for batch_idx, (data, y) in enumerate(train_loader):
             iteration += 1
-
+            # print(data.shape)
             # Perform training-step on this batch
             data, y = data.to(device), y.to(device)
             # loss_dict = model.train_a_batch(data, y=y)
@@ -135,6 +135,12 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
     # Are there different active classes per context (or just potentially a different mask per context)?
     per_context = (model.scenario=="task" or (model.scenario=="class" and model.neg_samples=="current"))
     per_context_singlehead = per_context and (model.scenario=="task" and model.singlehead)
+    if model.experiment=="CIFAR50" or model.experiment=="MINI":
+        first_classes = 50
+    elif model.experiment=="TINY":
+        first_classes = 100
+    else:
+        first_classes = 10
 
     # Loop over all contexts.
     for context, train_dataset in enumerate(train_datasets, 1):
@@ -187,30 +193,39 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             # -for Class-IL scenario, the active classes are determined by [model.neg_samples]
             if model.neg_samples=="all-so-far":
                 # --> one <list> with active classes of all contexts so far
-                if model.experiment!="CIFAR50" and model.experiment!='MINI':
-                    active_classes = list(range(model.classes_per_context * context))
-                elif context==1:
-                    active_classes = list(range(50))
-                else:
-                    active_classes = list(range(50 + model.classes_per_context * (context-1)))
+                active_classes = list(range(first_classes + model.classes_per_context * (context-1)))
+                # if model.experiment!="CIFAR50" and model.experiment!='MINI' and model.experiment!='TINY':
+                #     active_classes = list(range(model.classes_per_context * context))
+                # elif context==1:
+                #     active_classes = list(range(50))
+                # else:
+                #     active_classes = list(range(50 + model.classes_per_context * (context-1)))
             elif model.neg_samples=="all":
                 #--> always all classes are active
                 active_classes = None
             elif model.neg_samples=="current":
                 #--> only those classes in the current or replayed context are active (i.e., train "as if Task-IL")
-                if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                if context==1:
                     active_classes = [list(
-                        range(model.classes_per_context * i, model.classes_per_context * (i + 1))
-                    ) for i in range(context)]
-                else:
-                    if context==1:
-                        active_classes = [list(
-                        range(50)
+                        range(first_classes)
                     ) ]
-                    else:
-                        active_classes = [list(range(50))] + [list(
-                        range(50+model.classes_per_context * i, 50+model.classes_per_context * (i + 1))
+                else:
+                    active_classes = [list(range(50))] + [list(
+                        range(first_classes+model.classes_per_context * i, first_classes+model.classes_per_context * (i + 1))
                     ) for i in range(context-1)]
+                # if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                #     active_classes = [list(
+                #         range(model.classes_per_context * i, model.classes_per_context * (i + 1))
+                #     ) for i in range(context)]
+                # else:
+                #     if context==1:
+                #         active_classes = [list(
+                #         range(50)
+                #     ) ]
+                #     else:
+                #         active_classes = [list(range(50))] + [list(
+                #         range(50+model.classes_per_context * i, 50+model.classes_per_context * (i + 1))
+                    # ) for i in range(context-1)]
 
         # Reset state of optimizer(s) for every context (if requested)
         if (not model.label=="SeparateClassifiers") and model.optim_type=="adam_reset":
@@ -284,7 +299,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 binary_distillation = hasattr(model, "binaryCE") and model.binaryCE and model.binaryCE_distill
                 if binary_distillation and model.scenario in ("class", "all") and (previous_model is not None):
                     with torch.no_grad():
-                        if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                        if model.experiment!="CIFAR50" and model.experiment!='MINI' and model.experiment!='TINY':
                             scores = previous_model.classify(
                                 x, no_prototypes=True
                             )[:, :(model.classes_per_context * (context - 1))]
@@ -296,7 +311,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                             else:
                                 scores = previous_model.classify(
                                 x, no_prototypes=True
-                            )[:, :(50+model.classes_per_context * (context - 2))]
+                            )[:, :(first_classes+model.classes_per_context * (context - 2))]
                 else:
                     scores = None
 
@@ -318,10 +333,11 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         with torch.no_grad():
                             scores_ = previous_model.classify(x_, no_prototypes=True)
                         if model.scenario=="class" and model.neg_samples=="all-so-far":
-                            if model.experiment!="CIFAR50" and model.experiment!='MINI':
-                                scores_ = scores_[:, :(model.classes_per_context*(context-1))]
-                            else:
-                                scores_ = scores_[:, :(50 + model.classes_per_context*(context-2))]
+                            scores_ = scores_[:, :(first_classes + model.classes_per_context*(context-2))]
+                            # if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                            #     scores_ = scores_[:, :(model.classes_per_context*(context-1))]
+                            # else:
+                            #     scores_ = scores_[:, :(50 + model.classes_per_context*(context-2))]
                             #-> if [scores_] is not same length as [x_], zero probs are added in [loss_fn_kd]-function
                 else:
                     # Sample replayed training data, move to correct device and store in lists
@@ -375,14 +391,17 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         context_used.append(x_temp_[2])
                 else:
                     # -which classes are allowed to be generated? (relevant if conditional generator / decoder-gates)
-                    if model.experiment=="CIFAR50" and model.experiment!='MINI':
-                        allowed_classes = None if model.scenario=="domain" else list(
-                            range(50 + model.classes_per_context*(context-2))
-                        )            
-                    else:
-                        allowed_classes = None if model.scenario=="domain" else list(
-                            range(model.classes_per_context*(context-1))
-                        )                 
+                    allowed_classes = None if model.scenario=="domain" else list(
+                        range(first_classes + model.classes_per_context*(context-2))
+                    )
+                    # if model.experiment=="CIFAR50" and model.experiment!='MINI':
+                    #     allowed_classes = None if model.scenario=="domain" else list(
+                    #         range(50 + model.classes_per_context*(context-2))
+                    #     )            
+                    # else:
+                    #     allowed_classes = None if model.scenario=="domain" else list(
+                    #         range(model.classes_per_context*(context-1))
+                    #     )                 
                     # -which contexts are allowed to be generated? (only relevant if "Domain-IL" with context-gates)
                     allowed_domains = list(range(context-1))
                     # -generate inputs representative of previous contexts
@@ -405,10 +424,12 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         _, label = torch.max(scores_, dim=1)
                         _,_,_,mu_dist,logvar_dist,_,_,_ = previous_model.forward(x_, full=True, gate_input = label)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
-                        if model.experiment=="CIFAR50" and model.experiment!='MINI':
-                            scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
-                        else:
-                            scores_ = scores_[:, :(model.classes_per_context * (context - 1))]
+                        scores_ = scores_[:, :(first_classes+model.classes_per_context * (context - 2))]
+                        # if model.experiment=="CIFAR50" and model.experiment!='MINI':
+
+                        #     scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
+                        # else:
+                        #     scores_ = scores_[:, :(model.classes_per_context * (context - 1))]
                         # -> if [scores_] is not same length as [x_], zero probs are added in [loss_fn_kd]-function
                     # -also get the 'hard target'
                     _, y_ = torch.max(scores_, dim=1)
@@ -522,19 +543,27 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             # reduce examplar-sets (only needed when '--use-full-capacity' is selected)
             model.reduce_memory_sets(samples_per_class)
             # for each new class trained on, construct examplar-set
-            if model.experiment!="CIFAR50" and model.experiment!='MINI':
+            if context==1:
+                new_classes = list(range(first_classes)) if (
+                    model.scenario=="domain" or per_context_singlehead
+            ) else list(range(0, first_classes))
+            else:
                 new_classes = list(range(model.classes_per_context)) if (
                         model.scenario=="domain" or per_context_singlehead
-                ) else list(range(model.classes_per_context*(context-1), model.classes_per_context*context))
-            else:
-                if context==1:
-                    new_classes = list(range(50)) if (
-                        model.scenario=="domain" or per_context_singlehead
-                ) else list(range(0, 50))
-                else:
-                    new_classes = list(range(model.classes_per_context)) if (
-                            model.scenario=="domain" or per_context_singlehead
-                    ) else list(range(50+model.classes_per_context*(context-2), 50+model.classes_per_context*(context-1)))
+                ) else list(range(first_classes+model.classes_per_context*(context-2), 50+model.classes_per_context*(context-1)))
+            # if model.experiment!="CIFAR50" and model.experiment!='MINI':
+            #     new_classes = list(range(model.classes_per_context)) if (
+            #             model.scenario=="domain" or per_context_singlehead
+            #     ) else list(range(model.classes_per_context*(context-1), model.classes_per_context*context))
+            # else:
+            #     if context==1:
+            #         new_classes = list(range(50)) if (
+            #             model.scenario=="domain" or per_context_singlehead
+            #     ) else list(range(0, 50))
+            #     else:
+            #         new_classes = list(range(model.classes_per_context)) if (
+            #                 model.scenario=="domain" or per_context_singlehead
+            #         ) else list(range(50+model.classes_per_context*(context-2), 50+model.classes_per_context*(context-1)))
             for class_id in new_classes:
                 # create new dataset containing only all examples of this class
                 class_dataset = SubDataset(original_dataset=train_dataset, sub_labels=[class_id])
@@ -582,48 +611,74 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     if per_context:
                         previous_datasets = []
                         for context_id in range(context):
-                            if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                            if context_id==0:
                                 previous_datasets.append(MemorySetDataset(
-                                    model.memory_sets[
-                                        (model.classes_per_context * context_id):(model.classes_per_context*(context_id+1))
-                                    ],
-                                    target_transform=(lambda y, x=model.classes_per_context * context_id: y + x) if (
-                                        not per_context_singlehead
-                                    ) else (lambda y, x=model.classes_per_context: y % x)
-                                ))
+                                model.memory_sets[
+                                    0:first_classes
+                                ],
+                                target_transform=(lambda y, x=0: y + x) if (
+                                    not per_context_singlehead
+                                ) else (lambda y, x=first_classes: y % x)
+                            ))
                             else:
-                                if context_id==0:
-                                    previous_datasets.append(MemorySetDataset(
-                                    model.memory_sets[
-                                        0:50
-                                    ],
-                                    target_transform=(lambda y, x=0: y + x) if (
-                                        not per_context_singlehead
-                                    ) else (lambda y, x=50: y % x)
-                                ))
-                                else:
-                                    previous_datasets.append(MemorySetDataset(
-                                    model.memory_sets[
-                                        (50+model.classes_per_context * (context_id-1)):(50+model.classes_per_context*(context_id))
-                                    ],
-                                    target_transform=(lambda y, x=50+model.classes_per_context * (context_id-1): y + x) if (
-                                        not per_context_singlehead
-                                    ) else (lambda y, x=model.classes_per_context: y % x)
-                                ))
+                                previous_datasets.append(MemorySetDataset(
+                                model.memory_sets[
+                                    (first_classes+model.classes_per_context * (context_id-1)):(first_classes+model.classes_per_context*(context_id))
+                                ],
+                                target_transform=(lambda y, x=first_classes+model.classes_per_context * (context_id-1): y + x) if (
+                                    not per_context_singlehead
+                                ) else (lambda y, x=model.classes_per_context: y % x)
+                            ))
+                            # if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                            #     previous_datasets.append(MemorySetDataset(
+                            #         model.memory_sets[
+                            #             (model.classes_per_context * context_id):(model.classes_per_context*(context_id+1))
+                            #         ],
+                            #         target_transform=(lambda y, x=model.classes_per_context * context_id: y + x) if (
+                            #             not per_context_singlehead
+                            #         ) else (lambda y, x=model.classes_per_context: y % x)
+                            #     ))
+                            # else:
+                            #     if context_id==0:
+                            #         previous_datasets.append(MemorySetDataset(
+                            #         model.memory_sets[
+                            #             0:50
+                            #         ],
+                            #         target_transform=(lambda y, x=0: y + x) if (
+                            #             not per_context_singlehead
+                            #         ) else (lambda y, x=50: y % x)
+                            #     ))
+                            #     else:
+                            #         previous_datasets.append(MemorySetDataset(
+                            #         model.memory_sets[
+                            #             (50+model.classes_per_context * (context_id-1)):(50+model.classes_per_context*(context_id))
+                            #         ],
+                            #         target_transform=(lambda y, x=50+model.classes_per_context * (context_id-1): y + x) if (
+                            #             not per_context_singlehead
+                            #         ) else (lambda y, x=model.classes_per_context: y % x)
+                            #     ))
                     else:
-                        if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                        if context==1:
                             target_transform = None if not model.scenario=="domain" else (
-                                lambda y, x=model.classes_per_context: y % x
-                            )
+                            lambda y, x=first_classes: y % x
+                        )
                         else:
-                            if context==1:
-                                target_transform = None if not model.scenario=="domain" else (
-                                lambda y, x=50: y % x
-                            )
-                            else:
-                                target_transform = None if not model.scenario=="domain" else (
-                                lambda y, x=model.classes_per_context: y % x
-                            )
+                            target_transform = None if not model.scenario=="domain" else (
+                            lambda y, x=model.classes_per_context: y % x
+                        )
+                        # if model.experiment!="CIFAR50" and model.experiment!='MINI':
+                        #     target_transform = None if not model.scenario=="domain" else (
+                        #         lambda y, x=model.classes_per_context: y % x
+                        #     )
+                        # else:
+                        #     if context==1:
+                        #         target_transform = None if not model.scenario=="domain" else (
+                        #         lambda y, x=50: y % x
+                        #     )
+                        #     else:
+                        #         target_transform = None if not model.scenario=="domain" else (
+                        #         lambda y, x=model.classes_per_context: y % x
+                        #     )
                         previous_datasets = [MemorySetDataset(model.memory_sets, target_transform=target_transform)]
 
         progress.close()

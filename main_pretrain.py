@@ -11,6 +11,7 @@ import options
 import define_models as define
 from param_values import check_for_errors,set_default_values
 import torchvision.models as models
+from models.resnet32 import resnet32
 
 ## Function for specifying input-options and organizing / checking them
 def handle_inputs():
@@ -62,7 +63,7 @@ def run(args, verbose=False):
     )
 
     # Specify "data-loader" (among others for easy random shuffling and 'batchifying')
-    train_loader = utils.get_data_loader(trainset, batch_size=args.batch, cuda=cuda, drop_last=True)
+    train_loader = utils.get_data_loader(trainset, batch_size=args.batch, cuda=cuda, drop_last=True, experiment=args.experiment)
 
     # Determine number of iterations:
     iters = args.iters if args.iters else args.epochs*len(train_loader)
@@ -77,10 +78,10 @@ def run(args, verbose=False):
     if verbose:
         print("\n\n " +' DEFINE MODEL '.center(70, '*'))
     # cnn = define.define_standard_classifier(args=args, config=config, device=device, depth=args.depth)
-    cnn = models.resnet18(num_classes=50)
+    cnn = resnet32(num_classes=100)
     # Initialize (pre-trained) parameters
-    define.init_params(cnn, args,depth=depth)
-
+    # define.init_params(cnn, args,depth=depth)
+    define.init_params(cnn, args)
     # Set optimizer
     optim_list = [{'params': filter(lambda p: p.requires_grad, cnn.parameters()), 'lr': args.lr}]
     cnn.optimizer = torch.optim.Adam(optim_list, betas=(0.9, 0.999))
@@ -145,9 +146,9 @@ def run(args, verbose=False):
             utils.save_checkpoint(cnn, args.m_dir, name=save_name)
         # -full model
         else:
-            save_name = "resnet18" if (
+            save_name = "resnet32" if (
                 not hasattr(args, 'full_stag') or args.full_stag=="none"
-            ) else "{}-{}".format("resnet18", args.full_stag)
+            ) else "{}-{}".format("resnet32", args.full_stag)
             utils.save_checkpoint(cnn, args.m_dir, name=save_name)
 
     #-------------------------------------------------------------------------------------------------#

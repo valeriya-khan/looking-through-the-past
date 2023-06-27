@@ -90,7 +90,7 @@ def run(args, verbose=False):
     (train_datasets, test_datasets), config = get_context_set(
         name=args.experiment, scenario=args.scenario, contexts=args.contexts, data_dir=args.d_dir,
         normalize=checkattr(args, "normalize"), verbose=verbose, exception=(args.seed==0),
-        singlehead=checkattr(args, 'singlehead'), train_set_per_class=checkattr(args, 'gen_classifier')
+        singlehead=checkattr(args, 'singlehead'), train_set_per_class=checkattr(args, 'gen_classifier'), augment=True
     )
     # The experiments in this script follow the academic continual learning setting,
     # the above lines of code therefore load both the 'context set' and the 'data stream'
@@ -114,13 +114,18 @@ def run(args, verbose=False):
             logging.info("\n\n " + ' DEFINE FEATURE EXTRACTOR '.center(70, '*'))
         
         # - initialize (pre-trained) parameters
-        if args.model_type=="resnet" and args.experiment=="CIFAR50":
+        if args.model_type=="resnet" and (args.experiment=="CIFAR50"):
             feature_extractor = resnet32.resnet32(num_classes=50, device=device)
             define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
             feature_extractor.avgpool = torch.nn.Identity()
             feature_extractor.fc = torch.nn.Identity()
         elif args.model_type=="resnet" and args.experiment=="MINI":
             feature_extractor = models.resnet18(num_classes=50)
+            define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
+            feature_extractor.avgpool = torch.nn.Identity()
+            feature_extractor.fc = torch.nn.Identity()
+        elif args.model_type=="resnet" and (args.experiment=="TINY"):
+            feature_extractor = resnet32.resnet32(num_classes=100, device=device)
             define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
             feature_extractor.avgpool = torch.nn.Identity()
             feature_extractor.fc = torch.nn.Identity()
@@ -141,7 +146,7 @@ def run(args, verbose=False):
         if args.model_type=="conv":
             config['size'] = feature_extractor.conv_out_size
             config['channels'] = feature_extractor.conv_out_channels
-        elif args.experiment=="CIFAR50":
+        elif args.experiment=="CIFAR50" or args.experiment=='TINY':
             config['size'] = 64
             config['channels'] = 1
         else:
@@ -450,7 +455,7 @@ def run(args, verbose=False):
             train_gen_classifier if checkattr(args, 'gen_classifier') else train_cl
         )
         # -perform training
-        if args.experiment=='CIFAR50' or args.experiment=='MINI':
+        if args.experiment=='CIFAR50' or args.experiment=='MINI' or args.experiment=='TINY':
             # first_iters = args.iters*(len(train_datasets)-1)
             first_iters = 10000
         else:
@@ -653,14 +658,15 @@ if __name__ == '__main__':
     
     if not os.path.exists(logs_name):
         os.makedirs(logs_name)
-    logfilename = "logs/{}/{}/{}/{}_{}_{}_cycles-{}".format(
+    logfilename = "logs/{}/{}/{}/{}_{}_{}_cycles-{}_z-dim-{}".format(
         args.scenario,
         args.experiment,
         args.contexts,
         Repo().head.ref.name,
         args.iters,
         args.seed,
-        args.cycles
+        args.cycles,
+        args.z_dim
     )
     logging.basicConfig(
         level=logging.INFO,
