@@ -49,7 +49,7 @@ class Classifier(ContinualLearner, MemoryBuffer):
         )
         self.flatten = modules.Flatten()  # flatten image to 2D-tensor
         #------------------------------calculate input/output-sizes--------------------------------#
-        if model_type=='conv' or experiment=="CIFAR50":
+        if model_type=='conv' or experiment=="CIFAR50" or experiment=='TINY':
             self.conv_out_units = self.convE.out_units(image_size)
         else:
             self.conv_out_units = 4608

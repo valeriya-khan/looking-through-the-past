@@ -275,7 +275,7 @@ def define_vae(args, config, device, depth=0):
 ##-------------------------------------------------------------------------------------------------------------------##
 
 ## Function for (re-)initializing the parameters of [model]
-def init_params(model, args, depth, verbose=False):
+def init_params(model, args, depth=0, verbose=False):
 
     ## Initialization
     # - reinitialize all parameters according to default initialization
@@ -296,6 +296,9 @@ def init_params(model, args, depth, verbose=False):
     elif utils.checkattr(args, "pre_convE") and args.experiment=="MINI" and depth>0:
         load_name = args.m_dir + f"/finetune_seed_{args.seed}_resnet18_0.pth"
         utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
+    elif utils.checkattr(args, "pre_convE") and args.experiment=="TINY" and depth>0:
+        load_name = args.m_dir + f"/resnet32-tiny100resnet-s{args.seed}"
+        utils.load_checkpoint_old(model, model_dir='', name=load_name, verbose=verbose)
     elif utils.checkattr(args, "pre_convE") and model.name=="resnet32":
         load_name = args.m_dir + f"/finetune_seed_{args.seed}_0.pth"
         utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)

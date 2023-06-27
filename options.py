@@ -70,9 +70,9 @@ def add_eval_options(parser, main=False, comparison=False, pretrain=False, compa
 
 def add_problem_options(parser, pretrain=False, no_boundaries=False, **kwargs):
     problem_params = parser.add_argument_group('Problem Specification')
-    cl_protocols = ['splitMNIST', 'permMNIST', 'CIFAR10', 'CIFAR100', 'CIFAR50', 'MINI']
+    cl_protocols = ['splitMNIST', 'permMNIST', 'CIFAR10', 'CIFAR100', 'CIFAR50', 'MINI', 'TINY']
     problem_params.add_argument('--experiment', type=str, default='CIFAR10' if pretrain else 'splitMNIST',
-                             choices=['CIFAR10', 'CIFAR100', 'CIFAR50', 'MNIST', 'MNIST32','MINI'] if pretrain else cl_protocols)
+                             choices=['CIFAR10', 'CIFAR100', 'CIFAR50', 'MNIST', 'MNIST32','MINI', 'TINY'] if pretrain else cl_protocols)
     if no_boundaries:
         problem_params.add_argument('--stream', type=str, default='fuzzy-boundaries',
                                     choices=['fuzzy-boundaries', 'academic-setting', 'random'])

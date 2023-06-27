@@ -26,13 +26,18 @@ def checkattr(args, attr):
 ## Data-handling functions ##
 #############################
 
-def get_data_loader(dataset, batch_size, cuda=False, drop_last=False, augment=False, shuffle = True):
+def get_data_loader(dataset, batch_size, cuda=False, drop_last=False, augment=False, shuffle = True, experiment="CIFAR100"):
     '''Return <DataLoader>-object for the provided <DataSet>-object [dataset].'''
 
     # If requested, make copy of original dataset to add augmenting transform (without altering original dataset)
     if augment:
         dataset_ = copy.deepcopy(dataset)
-        dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment']])
+        if experiment=='TINY':
+            dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment_tiny']])
+        elif experiment=='MINI':
+            dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment_mini']])
+        else:
+            dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment']])
     else:
         dataset_ = dataset
 
@@ -261,7 +266,7 @@ def preprocess(feature_extractor, dataset_list, config, args, batch=128, message
         loader = get_data_loader(dataset_list[dataset_id], batch_size=batch, drop_last=False,
                                  cuda=True)
         # -pre-allocate tensors, which will be filled slice-by-slice
-        if args.experiment=="CIFAR50":
+        if args.experiment=="CIFAR50" or args.experiment=='TINY':
             all_features = torch.empty((len(loader.dataset), 4096))
         else:
             all_features = torch.empty((len(loader.dataset), 4608))
@@ -270,7 +275,9 @@ def preprocess(feature_extractor, dataset_list, config, args, batch=128, message
         # print(all_features.shape)
         for x, y in loader:
             # print(x.shape)
+            # print(x.shape)
             x = feature_extractor(x.to(device)).cpu()
+            # print(x.shape)
             # print(x.shape)
             # print(x.shape)
             all_features[count:(count+x.shape[0])] = x
@@ -292,7 +299,7 @@ def preprocess_old(feature_extractor, dataset_list, config, batch=128, message='
         loader = get_data_loader(dataset_list[dataset_id], batch_size=batch, drop_last=False,
                                  cuda=feature_extractor._is_on_cuda())
         # -pre-allocate tensors, which will be filled slice-by-slice
-        all_features = torch.empty((len(loader.dataset), config['channels'], config['size'], config['size']))
+        all_features = torch.empty((len(loader.dataset), config['channels'], 4, 4))
         all_labels = torch.empty((len(loader.dataset)), dtype=torch.long)
         count = 0
         # print(all_features.shape)
