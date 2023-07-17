@@ -135,7 +135,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
     # Are there different active classes per context (or just potentially a different mask per context)?
     per_context = (model.scenario=="task" or (model.scenario=="class" and model.neg_samples=="current"))
     per_context_singlehead = per_context and (model.scenario=="task" and model.singlehead)
-    if model.experiment=="CIFAR50" or model.experiment=="MINI":
+    if model.experiment=="CIFAR50" or model.experiment=="MINI" or model.experiment=='IN100':
         first_classes = 50
     elif model.experiment=="TINY":
         first_classes = 100
@@ -299,7 +299,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 binary_distillation = hasattr(model, "binaryCE") and model.binaryCE and model.binaryCE_distill
                 if binary_distillation and model.scenario in ("class", "all") and (previous_model is not None):
                     with torch.no_grad():
-                        if model.experiment!="CIFAR50" and model.experiment!='MINI' and model.experiment!='TINY':
+                        if model.experiment!="CIFAR50" and model.experiment!='MINI' and model.experiment!='TINY' and model.experiment!='IN100':
                             scores = previous_model.classify(
                                 x, no_prototypes=True
                             )[:, :(model.classes_per_context * (context - 1))]

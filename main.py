@@ -83,7 +83,7 @@ def run(args, verbose=False):
     (train_datasets, test_datasets), config = get_context_set(
         name=args.experiment, scenario=args.scenario, contexts=args.contexts, data_dir=args.d_dir,
         normalize=checkattr(args, "normalize"), verbose=verbose, exception=(args.seed==0),
-        singlehead=checkattr(args, 'singlehead'), train_set_per_class=checkattr(args, 'gen_classifier'), augment=True
+        singlehead=checkattr(args, 'singlehead'), train_set_per_class=checkattr(args, 'gen_classifier')
     )
     # The experiments in this script follow the academic continual learning setting,
     # the above lines of code therefore load both the 'context set' and the 'data stream'
@@ -117,6 +117,11 @@ def run(args, verbose=False):
             define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
             feature_extractor.avgpool = torch.nn.Identity()
             feature_extractor.fc = torch.nn.Identity()
+        elif args.model_type=="resnet"  and args.experiment=='IN100':
+            feature_extractor = models.resnet18(num_classes=50)
+            define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
+            # feature_extractor.avgpool = torch.nn.Identity()
+            feature_extractor.fc = torch.nn.Identity()            
         elif args.model_type=="resnet" and (args.experiment=="TINY"):
             feature_extractor = resnet32.resnet32(num_classes=100, device=device)
             define.init_params(feature_extractor, args, depth=depth, verbose=verbose)
@@ -448,9 +453,11 @@ def run(args, verbose=False):
             train_gen_classifier if checkattr(args, 'gen_classifier') else train_cl
         )
         # -perform training
-        if args.experiment=='CIFAR50' or args.experiment=='MINI' or args.experiment=='TINY':
+        if args.experiment=='CIFAR50' or args.experiment=='MINI':
             # first_iters = args.iters*(len(train_datasets)-1)
             first_iters = 10000
+        elif args.experiment=='TINY' or args.experiment=='IN100':
+            first_iters = 20000
         else:
             first_iters = args.iters
         train_fn(

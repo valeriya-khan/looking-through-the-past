@@ -36,11 +36,14 @@ def get_data_loader(dataset, batch_size, cuda=False, drop_last=False, augment=Fa
             dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment_tiny']])
         elif experiment=='MINI':
             dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment_mini']])
+        elif experiment=='IN100':
+            dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment_IN100']])
         else:
             dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment']])
     else:
         dataset_ = dataset
-
+    # if experiment=='IN100':
+    #     dataset_.transform = transforms.Compose([dataset.transform, *AVAILABLE_TRANSFORMS['augment_IN100']])
     # Create and return the <DataLoader>-object
     return DataLoader(
         dataset_, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
@@ -268,6 +271,8 @@ def preprocess(feature_extractor, dataset_list, config, args, batch=128, message
         # -pre-allocate tensors, which will be filled slice-by-slice
         if args.experiment=="CIFAR50" or args.experiment=='TINY':
             all_features = torch.empty((len(loader.dataset), 4096))
+        elif args.experiment=='IN100':
+            all_features = torch.empty((len(loader.dataset), 512))
         else:
             all_features = torch.empty((len(loader.dataset), 4608))
         all_labels = torch.empty((len(loader.dataset)), dtype=torch.long)

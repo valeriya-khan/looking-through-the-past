@@ -49,7 +49,8 @@ AVAILABLE_DATASETS = {
     'CIFAR10': datasets.CIFAR10,
     'CIFAR50': datasets.CIFAR100,
     "MINI": MiniDataset,
-    'TINY': datasets.ImageFolder
+    'TINY': datasets.ImageFolder,
+    'IN100': datasets.ImageFolder
 
 }
 
@@ -77,6 +78,9 @@ AVAILABLE_TRANSFORMS = {
     'TINY': [
         transforms.ToTensor(),
     ],
+    'IN100': [
+        transforms.ToTensor(),
+    ],
     'CIFAR10_norm': [
         transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
     ],
@@ -92,11 +96,16 @@ AVAILABLE_TRANSFORMS = {
     'TINY_norm': [
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ],
+    'IN100_norm': [
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+
+    ],
     'CIFAR10_denorm': UnNormalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616]),
     'CIFAR50_denorm': UnNormalize(mean=[0.5071, 0.4865, 0.4409], std=[0.2673, 0.2564, 0.2761]),
     'CIFAR100_denorm': UnNormalize(mean=[0.5071, 0.4865, 0.4409], std=[0.2673, 0.2564, 0.2761]),
     'MINI_denorm': UnNormalize(mean=[0.47313006, 0.44905752, 0.40378186], std=[0.27292014, 0.26559181, 0.27953038]),
     'TINY_denorm': UnNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    'IN100_denorm': UnNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     'augment_from_tensor': [
         transforms.ToPILImage(),
         transforms.RandomCrop(32, padding=4, padding_mode='symmetric'),
@@ -112,9 +121,15 @@ AVAILABLE_TRANSFORMS = {
         transforms.RandomHorizontalFlip(),
     ],
     'augment_tiny': [
-        transforms.Resize((32,32)),
+        transforms.Resize(32),
         transforms.RandomCrop(32, padding=4, padding_mode='symmetric'),
         transforms.RandomHorizontalFlip(),
+    ],
+    'augment_IN100': [
+        transforms.Resize(256),
+        transforms.CenterCrop(224)],
+    'augment_IN100_test':[
+        transforms.CenterCrop(224)
     ]
 }
 
@@ -127,4 +142,5 @@ DATASET_CONFIGS = {
     'CIFAR50': {'size': 32, 'channels': 3, 'classes': 100},
     'MINI': {'size': 84, 'channels': 3, 'classes': 100},
     'TINY': {'size': 32, 'channels': 3, 'classes': 200},
+    'IN100': {'size': 224, 'channels': 3, 'classes': 100},
 }

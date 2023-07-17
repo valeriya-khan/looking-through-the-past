@@ -51,6 +51,8 @@ class Classifier(ContinualLearner, MemoryBuffer):
         #------------------------------calculate input/output-sizes--------------------------------#
         if model_type=='conv' or experiment=="CIFAR50" or experiment=='TINY':
             self.conv_out_units = self.convE.out_units(image_size)
+        elif experiment=='IN100':
+            self.conv_out_units = 512
         else:
             self.conv_out_units = 4608
         self.conv_out_size = self.convE.out_size(image_size)

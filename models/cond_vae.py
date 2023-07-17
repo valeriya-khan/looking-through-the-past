@@ -88,6 +88,8 @@ class CondVAE(ContinualLearner):
             self.conv_out_units = self.convE.out_units(image_size)
         elif experiment=='TINY':
             self.conv_out_units = 4096
+        elif experiment=='IN100':
+            self.conv_out_units = 512
         else:
             self.conv_out_units = 4608
 

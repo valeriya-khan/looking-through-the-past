@@ -48,8 +48,8 @@ def set_method_options(args, **kwargs):
 
 def set_default_values(args, also_hyper_params=True, single_context=False, no_boundaries=False):
     # -set default-values for certain arguments based on chosen experiment
-    args.normalize = args.normalize if args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY') else False
-    args.depth = (5 if args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY') else 0) if args.depth is None else args.depth
+    args.normalize = args.normalize if args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY', 'IN100') else False
+    args.depth = (5 if args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY', 'IN100') else 0) if args.depth is None else args.depth
     if not single_context:
         args.contexts = (
             5 if args.experiment in ('splitMNIST', 'CIFAR10') else 10
@@ -73,7 +73,7 @@ def set_default_values(args, also_hyper_params=True, single_context=False, no_bo
         args.z_dim_gc = (5 if args.experiment == 'splitMNIST' else 20) if args.z_dim_gc is None else args.z_dim_gc
     if hasattr(args, 'recon_loss'):
         args.recon_loss = (
-            "MSE" if args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY') else "BCE"
+            "MSE" if args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY', 'IN100') else "BCE"
         ) if args.recon_loss is None else args.recon_loss
     if hasattr(args, "dg_type"):
         args.dg_type = ("context" if args.scenario == 'domain' else "class") if args.dg_type is None else args.dg_type
@@ -100,7 +100,7 @@ def set_default_values(args, also_hyper_params=True, single_context=False, no_bo
     if hasattr(args, 'scenario') and args.scenario == 'task':
         # -context-specific gating
         args.gating_prop = (
-            0.85 if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY') else (0.9 if args.experiment == 'splitMNIST' else 0.6)
+            0.85 if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY' or args.experiment == 'IN100') else (0.9 if args.experiment == 'splitMNIST' else 0.6)
         ) if args.gating_prop is None else args.gating_prop
     if also_hyper_params:
         # -regularization strength
@@ -112,17 +112,17 @@ def set_default_values(args, also_hyper_params=True, single_context=False, no_bo
             args.si_c = 10. if args.si_c is None else args.si_c
         elif args.scenario == 'task':
             args.si_c = (
-                10. if args.experiment == 'splitMNIST' else (100. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY') else 10.)
+                10. if args.experiment == 'splitMNIST' else (100. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY' or args.experiment == 'IN100') else 10.)
             ) if args.si_c is None else args.si_c
             args.ewc_lambda = (
-                100000. if args.experiment == 'splitMNIST' else (1000. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY') else 100.)
+                100000. if args.experiment == 'splitMNIST' else (1000. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY' or args.experiment == 'IN100') else 100.)
             ) if args.ewc_lambda is None else args.ewc_lambda
         elif args.scenario == 'domain':
             args.si_c = (
-                50000. if args.experiment == 'splitMNIST' else (500. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY') else 10.)
+                50000. if args.experiment == 'splitMNIST' else (500. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY' or args.experiment == 'IN100') else 10.)
             ) if args.si_c is None else args.si_c
             args.ewc_lambda = (
-                10000000000. if args.experiment == 'splitMNIST' else (1000. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY') else 100.)
+                10000000000. if args.experiment == 'splitMNIST' else (1000. if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY' or args.experiment == 'IN100') else 100.)
             ) if args.ewc_lambda is None else args.ewc_lambda
         elif args.scenario == 'class':
             args.si_c = (5000. if args.experiment == 'splitMNIST' else 5.) if args.si_c is None else args.si_c
@@ -136,7 +136,7 @@ def set_default_values(args, also_hyper_params=True, single_context=False, no_bo
         # -use a prior for the Fisher (as in NCL)
         if hasattr(args, 'data_size'):
             args.data_size = (12000 if args.experiment == 'splitMNIST' else (
-                60000 if args.experiment == 'permMNIST' else (5000 if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY') else 10000)
+                60000 if args.experiment == 'permMNIST' else (5000 if (args.experiment == 'CIFAR100' or args.experiment == 'CIFAR50' or args.experiment == 'MINI' or args.experiment == 'TINY' or args.experiment == 'IN100') else 10000)
             )) if args.data_size is None else args.data_size
         # -gating based on internal context (brain-inspired replay)
         if args.scenario == 'task' and hasattr(args, 'dg_prop'):
@@ -154,7 +154,7 @@ def set_default_values(args, also_hyper_params=True, single_context=False, no_bo
 
 def check_for_errors(args, pretrain=False, **kwargs):
     if pretrain:
-        if checkattr(args, 'augment') and not args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY'):
+        if checkattr(args, 'augment') and not args.experiment in ('CIFAR10', 'CIFAR100','CIFAR50','MINI', 'TINY', 'IN100'):
             raise ValueError("Augmentation is only supported for 'CIFAR10' or 'CIFAR-100'.")
     if not pretrain:
         if (checkattr(args, 'separate_networks') or checkattr(args, 'xdg')) and (not args.scenario == "task"):
