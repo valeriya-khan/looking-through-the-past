@@ -119,7 +119,7 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
                             are not shuffled before being distributed over the contexts (e.g., splitMNIST, CIFAR100)'''
 
     ## NOTE: options 'normalize' and 'augment' only implemented for CIFAR-based experiments.
-
+    exception=True
     # Define data-type
     if name == "splitMNIST":
         data_type = 'MNIST'

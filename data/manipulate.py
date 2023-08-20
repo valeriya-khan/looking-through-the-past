@@ -40,6 +40,11 @@ class SubDataset(Dataset):
                     label = self.dataset.test_labels[index]
                 else:
                     label = self.dataset.target_transform(self.dataset.test_labels[index])
+            elif hasattr(self.dataset, 'targets'):
+                if self.dataset.target_transform is None:
+                    label = self.dataset.targets[index]
+                else:
+                    label = self.dataset.target_transform(self.dataset.targets[index])
             else:
                 label = self.dataset[index][1]
             if label in sub_labels:
