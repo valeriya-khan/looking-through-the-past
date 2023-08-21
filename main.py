@@ -465,7 +465,7 @@ def run(args, verbose=False):
             sample_cbs=sample_cbs, eval_cbs=eval_cbs, loss_cbs=loss_cbs, context_cbs=context_cbs,
             # -if using generative replay with a separate generative model:
             generator=generator, gen_iters=args.g_iters if hasattr(args, 'g_iters') else args.iters,
-            gen_loss_cbs=generator_loss_cbs,
+            gen_loss_cbs=generator_loss_cbs, seed = args.seed
         )
         # -get total training-time in seconds, write to file and print to screen
         if args.time:
