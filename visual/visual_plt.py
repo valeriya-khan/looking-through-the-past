@@ -369,3 +369,74 @@ def plot_bars(number_list, names=None, colors=None, ylabel=None, title_list=None
 
     # return the figure
     return f
+
+def plot_pr_curves(precision_list, recall_list, names=None, colors=None,
+                   figsize=None, with_dots=False, linestyle="solid", title=None, title_top=None, alpha=None):
+    '''Generates a figure containing multiple groups of "Precision & Recall"-curves in one plot.
+
+    :param precision_list:  <list> of all <lists> of precision-lines to plot (with each line being a <list> as well)
+    :param receall_list:    <list> of all <lists> of precision-lines to plot (with each line being a <list> as well)
+    :param names:           <list> containing the names of each group
+    :param colors:          <list> containing the colors of each group
+    :param title:           <str> title of plot
+    :param title_top:       <str> text to appear on top of the title
+    :return: f:             <figure>'''
+
+    # defaults for "Precision & Recall"-curves
+    ylim = xlim = [0, 1]
+    xlabel = "Recall"
+    ylabel = "Precision"
+
+    # make plot
+    size = (8, 8) if figsize is None else figsize
+    f, axarr = plt.subplots(1, 1, figsize=size)
+
+    # loop over all groups
+    for group_id in range(len(precision_list)):
+        new_group = True
+
+        # loop over all lines
+        n_lines = len(precision_list[group_id])
+        for line_id in range(n_lines):
+          axarr.plot(recall_list[group_id][line_id], precision_list[group_id][line_id], label=None,
+                     color=colors[group_id] if colors is not None else "black", linewidth=2,
+                     alpha=0.5*alpha if alpha is not None else 0.5, marker='o' if with_dots else None,
+                     linestyle=linestyle if type(linestyle) == str else linestyle[group_id])
+          if new_group:
+              sum_recall = recall_list[group_id][line_id]
+              sum_precision = precision_list[group_id][line_id]
+              new_group = False
+          else:
+              sum_recall = [sum(x) for x in zip(sum_recall, recall_list[group_id][line_id])]
+              sum_precision = [sum(x) for x in zip(sum_precision, precision_list[group_id][line_id])]
+
+        # add mean group lines
+        axarr.plot([rec/n_lines for rec in sum_recall], [pre/n_lines for pre in sum_precision],
+                   label=names[group_id] if names is not None else None,
+                   color=colors[group_id] if colors is not None else "black", linewidth=4,
+                   marker='o' if with_dots else None,
+                   linestyle=linestyle if type(linestyle) == str else linestyle[group_id],
+                   alpha=alpha if alpha is not None else 1.)
+
+    # finish layout
+    # -set y-axis
+    if ylim is not None:
+        axarr.set_ylim(ylim)
+    # -set x-axis
+    if xlim is not None:
+        axarr.set_xlim(xlim)
+    # -add axis-labels
+    if xlabel is not None:
+        axarr.set_xlabel(xlabel)
+    if ylabel is not None:
+        axarr.set_ylabel(ylabel)
+    # -add title(s)
+    if title is not None:
+        axarr.set_title(title)
+    if title_top is not None:
+        f.suptitle(title_top)
+    # -add legend
+    if names is not None:
+        axarr.legend()
+
+    return f

@@ -12,6 +12,8 @@ from eval import evaluate
 from models.utils import loss_functions as lf
 from torch.nn import functional as F
 import logging
+import eval.precision_recall as pr
+from visual.visual_plt import plot_pr_curves
 
 def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
     '''Train a model with a "train_a_batch" method for [iters] iterations on data from [train_loader].
@@ -104,7 +106,7 @@ def train_old(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
 
 def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_size=32, baseline='none',
              loss_cbs=list(), eval_cbs=list(), sample_cbs=list(), context_cbs=list(),
-             generator=None, gen_iters=0, gen_loss_cbs=list(), first_iters = 0, cycles=0, **kwargs):
+             generator=None, gen_iters=0, gen_loss_cbs=list(), first_iters = 0, cycles=0, seed = 0, **kwargs):
     '''Train a model (with a "train_a_batch" method) on multiple contexts.
 
     [model]               <nn.Module> main model to optimize across all contexts
@@ -739,6 +741,33 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         average_accs = sum(accs) / (context)
         logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
         
+        concat_dataset = ConcatDataset([test_datasets[i] for i in range(context)])
+        # gen_size = 0
+        # for i in range(context):
+        #     gen_size += len(test_datasets[i])
+        gen_size = len(concat_dataset)
+        # test_datasets[i]
+        allowed_domains = list(range(context))
+        generations = model.sample(gen_size, allowed_classes=allowed_classes,
+                                                        allowed_domains=allowed_domains, only_x=True)
+        n_repeats = int(np.ceil(gen_size/batch_size))
+        gen_emb  = []
+        for i in range(n_repeats):
+            x = generations[(i*batch_size): int(min(((i+1)*batch_size), gen_size))]
+            with torch.no_grad():
+                gen_emb.append(x.cpu().numpy())
+        gen_emb  = np.concatenate(gen_emb)
+        data_loader = get_data_loader(concat_dataset, batch_size=batch_size, cuda=cuda)
+        real_emb = []
+        for real_x, _ in data_loader:
+            with torch.no_grad():
+                real_emb.append(real_x.cpu().numpy())
+        real_emb = np.concatenate(real_emb)
+        precision, recall = pr.compute_prd_from_embedding(gen_emb, real_emb, context=context)
+        logging.info(f'precision: {precision}, recall: {recall}')
+        figure = plot_pr_curves([[precision]], [[recall]])
+        figure.savefig(f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/figs/recall_prec_{context}_{seed}.png")
+        # pp.savefig(figure)
         # average_rec_loss = sum(rec_losses)/context
         # print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
 
