@@ -233,6 +233,7 @@ def get_context_set(name, scenario, contexts, data_dir="./datasets", only_config
         # prepare permutation to shuffle label-ids (to create different class batches for each random seed)
         classes = config['classes']
         perm_class_list = np.array(list(range(classes))) if exception else np.random.permutation(list(range(classes)))
+        # perm_class_list = np.random.RandomState(seed=1).permutation(list(range(classes)))
         temp_list = np.argsort(perm_class_list)
         logging.info(temp_list)
         target_transform = transforms.Lambda(lambda y, p=perm_class_list: int(p[y]))

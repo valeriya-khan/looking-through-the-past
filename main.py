@@ -23,6 +23,12 @@ import logging
 from git import Repo
 from models import resnet32
 import torchvision.models as models
+from utils import get_data_loader
+from torch.utils.data import ConcatDataset
+from visual.visual_plt import plot_pr_curves
+import eval.precision_recall as pr
+
+import copy
 ## Function for specifying input-options and organizing / checking them
 def handle_inputs():
     # Set indicator-dictionary for correctly retrieving / checking input options
@@ -489,6 +495,53 @@ def run(args, verbose=False):
                 utils.save_checkpoint(model, args.m_dir, name=save_name, verbose=verbose)
     else:
         # Load previously trained model(s) (if goal is to only evaluate previously trained model)
+        if args.eval == 'per_context':
+            precs, recalls = [], []
+            names = []
+            for task in range(1, args.contexts+1):
+                utils.load_checkpoint_old(model, '', name=f'/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/develop/model-CIFAR50-seed{args.seed}-cycles0-context{task}-develop', verbose=verbose, strict=False)
+                active_classes = list(range(50 + model.classes_per_context * (task-1)))
+                concat_dataset = ConcatDataset([test_datasets[i] for i in range(task)])
+                # gen_size = 0
+                # for i in range(context):
+                #     gen_size += len(test_datasets[i])
+                gen_size = len(concat_dataset)
+                # test_datasets[i]
+                allowed_domains = list(range(task))
+                # generations = model.sample(gen_size, allowed_classes=active_classes,
+                #                                                 allowed_domains=allowed_domains, only_x=False)
+                x_temp_ = model.sample(gen_size, allowed_classes=active_classes,
+                                            allowed_domains=allowed_domains, only_x=False)
+                generations = x_temp_[0] if type(x_temp_)==tuple else x_temp_
+                y_temp_cycle_ = x_temp_[1]
+                # for cycle in range(args.cycles):
+                #     generations = model(generations, gate_input=y_temp_cycle_, full=False)
+                # y_temp_cycle_ = x_temp_[1]
+                # for cycle in range(cycles):
+                #     generations = model(generations, gate_input=y_temp_cycle_, full=False)
+                # _,_,generations,_ = model.encode(generations)
+                n_repeats = int(np.ceil(gen_size/args.batch))
+                gen_emb  = []
+                for i in range(n_repeats):
+                    x = generations[(i*args.batch): int(min(((i+1)*args.batch), gen_size))]
+                    with torch.no_grad():
+                        gen_emb.append(x.cpu().numpy())
+                gen_emb  = np.concatenate(gen_emb)
+                data_loader = get_data_loader(concat_dataset, batch_size=args.batch, cuda=cuda)
+                real_emb = []
+                for real_x, _ in data_loader:
+                    with torch.no_grad():
+                        # _,_,real_x,_ = model.encode(real_x.cuda())
+                        real_emb.append(real_x.cpu().numpy())
+                real_emb = np.concatenate(real_emb)
+                precision, recall = pr.compute_prd_from_embedding(gen_emb, real_emb)
+                precs.append([precision])
+                recalls.append([recall])
+                names.append(f'task {task}')
+            # logging.info(f'precision: {precision}, recall: {recall}')
+            figure = plot_pr_curves(precs, recalls, names=names, colors=['red', 'orange', 'limegreen', 'deepskyblue', 'blue', 'magenta'],
+                   figsize=None, with_dots=False, linestyle="solid", title=None, title_top=None, alpha=None)
+            figure.savefig(f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/figs/recall_prec_one_plot_{args.seed}_develop.png")
         if verbose:
             logging.info("\nLoading parameters of previously trained model...")
         if args.model_type=="conv":

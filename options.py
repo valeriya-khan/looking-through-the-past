@@ -96,6 +96,7 @@ def add_model_options(parser, pretrain=False, compare_replay=False, **kwargs):
     # -convolutional layers
     model.add_argument('--conv-type', type=str, default="standard", choices=["standard", "resNet"])
     model.add_argument('--model-type', type=str, default="conv", choices=["conv", "resnet"])
+    model.add_argument('--eval', type=str, default="conv", choices=["standard", "per_context"])
     model.add_argument('--n-blocks', type=int, default=2, help="# blocks per conv-layer (only for 'resNet')")
     model.add_argument('--depth', type=int, default=None, help="# of convolutional layers (0 = only fc-layers)")
     model.add_argument('--reducing-layers', type=int, dest='rl', help="# of layers with stride (=image-size halved)")
