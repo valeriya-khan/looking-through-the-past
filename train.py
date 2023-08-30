@@ -735,43 +735,7 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         average_accs = sum(accs) / (context)
         logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
         
-        concat_dataset = ConcatDataset([test_datasets[i] for i in range(context)])
-        # gen_size = 0
-        # for i in range(context):
-        #     gen_size += len(test_datasets[i])
-        gen_size = len(concat_dataset)
-        # test_datasets[i]
-        allowed_domains = list(range(context))
-        # generations = model.sample(gen_size, allowed_classes=active_classes,
-        #                                                 allowed_domains=allowed_domains, only_x=False)
-        x_temp_ = model.sample(gen_size, allowed_classes=active_classes,
-                                    allowed_domains=allowed_domains, only_x=False)
-        generations = x_temp_[0] if type(x_temp_)==tuple else x_temp_
-        y_temp_cycle_ = x_temp_[1]
-        for cycle in range(cycles):
-            generations = model(generations, gate_input=y_temp_cycle_, full=False)
-        # y_temp_cycle_ = x_temp_[1]
-        # for cycle in range(cycles):
-        #     generations = model(generations, gate_input=y_temp_cycle_, full=False)
-        # _,_,generations,_ = model.encode(generations)
-        n_repeats = int(np.ceil(gen_size/batch_size))
-        gen_emb  = []
-        for i in range(n_repeats):
-            x = generations[(i*batch_size): int(min(((i+1)*batch_size), gen_size))]
-            with torch.no_grad():
-                gen_emb.append(x.cpu().numpy())
-        gen_emb  = np.concatenate(gen_emb)
-        data_loader = get_data_loader(concat_dataset, batch_size=batch_size, cuda=cuda)
-        real_emb = []
-        for real_x, _ in data_loader:
-            with torch.no_grad():
-                real_emb.append(real_x.cpu().numpy())
-        real_emb = np.concatenate(real_emb)
-        precision, recall = pr.compute_prd_from_embedding(gen_emb, real_emb)
-        logging.info(f'precision: {precision}, recall: {recall}')
-        figure = plot_pr_curves([[precision]], [[recall]])
-        figure.savefig(f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/figs/recall_prec_{context}_{seed}_develop.png")
-        utils.save_checkpoint(model, '/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/develop/', name=f'model-{model.experiment}-seed{seed}-cycles{cycles}-context{context}-develop')
+        utils.save_checkpoint(model, '/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/develop/', name=f'model-{model.experiment}-seed{seed}-context{context}-develop')
 
         # pp.savefig(figure)
         # average_rec_loss = sum(rec_losses)/context
