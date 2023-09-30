@@ -14,6 +14,7 @@ from torch.nn import functional as F
 import logging
 import eval.precision_recall as pr
 from visual.visual_plt import plot_pr_curves
+import utils
 
 def train(model, train_loader, iters, loss_cbs=list(), eval_cbs=list()):
     '''Train a model with a "train_a_batch" method for [iters] iterations on data from [train_loader].
@@ -755,11 +756,11 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         generations = x_temp_[0] if type(x_temp_)==tuple else x_temp_
         y_temp_cycle_ = x_temp_[1]
         for cycle in range(cycles):
-            generations = previous_generator(generations, gate_input=y_temp_cycle_, full=False)
+            generations = model(generations, gate_input=y_temp_cycle_, full=False)
         # y_temp_cycle_ = x_temp_[1]
         # for cycle in range(cycles):
         #     generations = model(generations, gate_input=y_temp_cycle_, full=False)
-        _,_,generations,_ = model.encode(generations)
+        # _,_,generations,_ = model.encode(generations)
         n_repeats = int(np.ceil(gen_size/batch_size))
         gen_emb  = []
         for i in range(n_repeats):
@@ -774,10 +775,11 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 _,_,real_x,_ = model.encode(real_x.cuda())
                 real_emb.append(real_x.cpu().numpy())
         real_emb = np.concatenate(real_emb)
-        precision, recall = pr.compute_prd_from_embedding(gen_emb, real_emb, context=context)
+        precision, recall = pr.compute_prd_from_embedding(gen_emb, real_emb)
         logging.info(f'precision: {precision}, recall: {recall}')
         figure = plot_pr_curves([[precision]], [[recall]])
-        figure.savefig(f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/figs/recall_prec_{context}_{seed}_latent_hE_cycles.png")
+        figure.savefig(f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/figs/recall_prec_{context}_{seed}_latent_cycles_fix.png")
+        utils.save_checkpoint(model, '/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/laten_match_dist_cycle/', name=f'model-{model.experiment}-seed{seed}-cycles{cycles}-context{context}')
         # pp.savefig(figure)
         # average_rec_loss = sum(rec_losses)/context
         # print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
