@@ -197,12 +197,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
             if model.neg_samples=="all-so-far":
                 # --> one <list> with active classes of all contexts so far
                 active_classes = list(range(first_classes + model.classes_per_context * (context-1)))
-                # if model.experiment!="CIFAR50" and model.experiment!='MINI' and model.experiment!='TINY':
-                #     active_classes = list(range(model.classes_per_context * context))
-                # elif context==1:
-                #     active_classes = list(range(50))
-                # else:
-                #     active_classes = list(range(50 + model.classes_per_context * (context-1)))
             elif model.neg_samples=="all":
                 #--> always all classes are active
                 active_classes = None
@@ -216,19 +210,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     active_classes = [list(range(50))] + [list(
                         range(first_classes+model.classes_per_context * i, first_classes+model.classes_per_context * (i + 1))
                     ) for i in range(context-1)]
-                # if model.experiment!="CIFAR50" and model.experiment!='MINI':
-                #     active_classes = [list(
-                #         range(model.classes_per_context * i, model.classes_per_context * (i + 1))
-                #     ) for i in range(context)]
-                # else:
-                #     if context==1:
-                #         active_classes = [list(
-                #         range(50)
-                #     ) ]
-                #     else:
-                #         active_classes = [list(range(50))] + [list(
-                #         range(50+model.classes_per_context * i, 50+model.classes_per_context * (i + 1))
-                    # ) for i in range(context-1)]
 
         # Reset state of optimizer(s) for every context (if requested)
         if (not model.label=="SeparateClassifiers") and model.optim_type=="adam_reset":
@@ -337,11 +318,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                             scores_ = previous_model.classify(x_, no_prototypes=True)
                         if model.scenario=="class" and model.neg_samples=="all-so-far":
                             scores_ = scores_[:, :(first_classes + model.classes_per_context*(context-2))]
-                            # if model.experiment!="CIFAR50" and model.experiment!='MINI':
-                            #     scores_ = scores_[:, :(model.classes_per_context*(context-1))]
-                            # else:
-                            #     scores_ = scores_[:, :(50 + model.classes_per_context*(context-2))]
-                            #-> if [scores_] is not same length as [x_], zero probs are added in [loss_fn_kd]-function
                 else:
                     # Sample replayed training data, move to correct device and store in lists
                     x_ = list()
@@ -397,14 +373,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                     allowed_classes = None if model.scenario=="domain" else list(
                         range(first_classes + model.classes_per_context*(context-2))
                     )
-                    # if model.experiment=="CIFAR50" and model.experiment!='MINI':
-                    #     allowed_classes = None if model.scenario=="domain" else list(
-                    #         range(50 + model.classes_per_context*(context-2))
-                    #     )            
-                    # else:
-                    #     allowed_classes = None if model.scenario=="domain" else list(
-                    #         range(model.classes_per_context*(context-1))
-                    #     )                 
                     # -which contexts are allowed to be generated? (only relevant if "Domain-IL" with context-gates)
                     allowed_domains = list(range(context-1))
                     # -generate inputs representative of previous contexts
@@ -422,11 +390,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                         scores_ = previous_model.classify(x_, no_prototypes=True)
                     if model.scenario == "class" and model.neg_samples == "all-so-far":
                         scores_ = scores_[:, :(first_classes+model.classes_per_context * (context - 2))]
-                        # if model.experiment=="CIFAR50" and model.experiment!='MINI':
-
-                        #     scores_ = scores_[:, :(50+model.classes_per_context * (context - 2))]
-                        # else:
-                        #     scores_ = scores_[:, :(model.classes_per_context * (context - 1))]
                         # -> if [scores_] is not same length as [x_], zero probs are added in [loss_fn_kd]-function
                     # -also get the 'hard target'
                     _, y_ = torch.max(scores_, dim=1)
@@ -461,13 +424,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
 
             #---> Train MAIN MODEL
             if batch_index <= iters_to_use:
-                # if previous_model is not None:
-                    
-                #     vals = [1000,3000,4000]
-                #     if batch_index in vals:
-                #         num_iters-=1
-                #     for it in range(num_iters):
-                #         x = previous_model(x, gate_input=y)
                 # Train the main model with this batch
                 loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, scores=scores, scores_=scores_, rnt = 1./context,
                                                 contexts_=context_used, active_classes=active_classes, context=context)
@@ -547,19 +503,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                 new_classes = list(range(model.classes_per_context)) if (
                         model.scenario=="domain" or per_context_singlehead
                 ) else list(range(first_classes+model.classes_per_context*(context-2), 50+model.classes_per_context*(context-1)))
-            # if model.experiment!="CIFAR50" and model.experiment!='MINI':
-            #     new_classes = list(range(model.classes_per_context)) if (
-            #             model.scenario=="domain" or per_context_singlehead
-            #     ) else list(range(model.classes_per_context*(context-1), model.classes_per_context*context))
-            # else:
-            #     if context==1:
-            #         new_classes = list(range(50)) if (
-            #             model.scenario=="domain" or per_context_singlehead
-            #     ) else list(range(0, 50))
-            #     else:
-            #         new_classes = list(range(model.classes_per_context)) if (
-            #                 model.scenario=="domain" or per_context_singlehead
-            #         ) else list(range(50+model.classes_per_context*(context-2), 50+model.classes_per_context*(context-1)))
             for class_id in new_classes:
                 # create new dataset containing only all examples of this class
                 class_dataset = SubDataset(original_dataset=train_dataset, sub_labels=[class_id])
@@ -572,25 +515,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         for context_cb in context_cbs:
             if context_cb is not None:
                 context_cb(model, iters_to_use, context=context)
-        # if context>1:
-        #     for it in range(100):
-        #         # print(dataset)
-        #         # data_loader = get_data_loader(dataset, len(dataset), cuda=cuda, shuffle=False)
-        #         # z_class = []
-        #         model.eval()
-        #         with torch.no_grad():
-        #             # for x,y in data_loader:
-        #             #     _, _, _, _, z = model.forward(x.to(device), gate_input=y.to(device), full=True)
-        #             #     z_class.append(z)
-        #             # z_class = torch.cat(z_class, dim=0)
-        #             # mean_class, var_class = torch.var_mean(z_class, dim=0)
-        #             reconL = F.mse_loss(input=model.z_class_means[it], target=previous_model.z_class_means[it], reduction='none')
-        #             reconL = torch.mean(reconL).item()
-        #             # reconL = -lf.log_Normal_standard(x=mean_class, mean=model.z_class_means[y[0]], average=True, dim=-1)
-        #             # reconL = lf.weighted_average(reconL).item()
-        #             # logging.info(model.z_class_means[y[0]])
-        #             logging.info(np.sqrt(reconL))
-        #         model.train()
         # REPLAY: update source for replay
         if context<len(train_datasets) and hasattr(model, 'replay_mode'):
             previous_model = copy.deepcopy(model).eval()
@@ -625,34 +549,6 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                                     not per_context_singlehead
                                 ) else (lambda y, x=model.classes_per_context: y % x)
                             ))
-                            # if model.experiment!="CIFAR50" and model.experiment!='MINI':
-                            #     previous_datasets.append(MemorySetDataset(
-                            #         model.memory_sets[
-                            #             (model.classes_per_context * context_id):(model.classes_per_context*(context_id+1))
-                            #         ],
-                            #         target_transform=(lambda y, x=model.classes_per_context * context_id: y + x) if (
-                            #             not per_context_singlehead
-                            #         ) else (lambda y, x=model.classes_per_context: y % x)
-                            #     ))
-                            # else:
-                            #     if context_id==0:
-                            #         previous_datasets.append(MemorySetDataset(
-                            #         model.memory_sets[
-                            #             0:50
-                            #         ],
-                            #         target_transform=(lambda y, x=0: y + x) if (
-                            #             not per_context_singlehead
-                            #         ) else (lambda y, x=50: y % x)
-                            #     ))
-                            #     else:
-                            #         previous_datasets.append(MemorySetDataset(
-                            #         model.memory_sets[
-                            #             (50+model.classes_per_context * (context_id-1)):(50+model.classes_per_context*(context_id))
-                            #         ],
-                            #         target_transform=(lambda y, x=50+model.classes_per_context * (context_id-1): y + x) if (
-                            #             not per_context_singlehead
-                            #         ) else (lambda y, x=model.classes_per_context: y % x)
-                            #     ))
                     else:
                         if context==1:
                             target_transform = None if not model.scenario=="domain" else (
@@ -662,60 +558,14 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
                             target_transform = None if not model.scenario=="domain" else (
                             lambda y, x=model.classes_per_context: y % x
                         )
-                        # if model.experiment!="CIFAR50" and model.experiment!='MINI':
-                        #     target_transform = None if not model.scenario=="domain" else (
-                        #         lambda y, x=model.classes_per_context: y % x
-                        #     )
-                        # else:
-                        #     if context==1:
-                        #         target_transform = None if not model.scenario=="domain" else (
-                        #         lambda y, x=50: y % x
-                        #     )
-                        #     else:
-                        #         target_transform = None if not model.scenario=="domain" else (
-                        #         lambda y, x=model.classes_per_context: y % x
-                        #     )
                         previous_datasets = [MemorySetDataset(model.memory_sets, target_transform=target_transform)]
 
         progress.close()
         if generator is not None:
             progress_gen.close()
 
-        # accs = []
-        # for i in range(context):
-        #     acc = evaluate.test_acc(
-        #         model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=list(
-        #             range(0, config['classes_per_context']*(i+1))
-        #         )
-        #     )
-        #     accs.append(acc)
-        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
-        # average_accs = sum(accs) / (context)
-        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
         accs = []
-        
-        # rec_losses = []
-        # for i in range(context):
-        #     if len(gen_data)<i+1:                    
-        #         acc, gen, rec_loss = evaluate.test_acc(
-        #             model, test_datasets[i], gen_data=None,verbose=False, test_size=None, context_id=i, allowed_classes=None
-        #         )
-        #         gen_data.append(gen)
-        #     else:
-        #         acc, gen, rec_loss = evaluate.test_acc(
-        #             model, test_datasets[i], gen_data=gen_data[i],verbose=False, test_size=None, context_id=i, allowed_classes=None
-        #         )
-        #         gen_data[i] = gen
-        #     rec_losses.append(rec_loss)
-        #     accs.append(acc)
-        #     print(" - Context {}: {:.4f}".format(i + 1, acc))
-        #     print(f"Reconstruction loss for context {i+1}: {rec_loss}")
-        # average_accs = sum(accs) / (context)
-        # print('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
-        
-        # average_rec_loss = sum(rec_losses)/context
-        # print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
 
         for i in range(context):
             if len(gen_data)<i+1:                    
@@ -735,22 +585,8 @@ def train_cl(model, train_datasets, test_datasets, config, iters=2000, batch_siz
         average_accs = sum(accs) / (context)
         logging.info('=> average accuracy over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
         
-        utils.save_checkpoint(model, '/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/develop/', name=f'model-{model.experiment}-seed{seed}-context{context}-develop')
+        utils.save_checkpoint(model, './continual-learning/store/models/develop/', name=f'model-{model.experiment}-seed{seed}-context{context}-develop')
 
-        # pp.savefig(figure)
-        # average_rec_loss = sum(rec_losses)/context
-        # print(f"=> average rec_loss over all {context} contexts: {average_rec_loss}")
-
-        # if model.label == "VAE" or model.label == "CondVAE":
-        #     rec_losses = []
-        #     for i in range(context):
-        #         rec_loss = evaluate.test_degradation(
-        #             model, test_datasets[i], verbose=False, test_size=None, context_id=i, allowed_classes=None
-        #         )
-        #         rec_losses.append(rec_loss)
-        #         print(" - Context {}: {:.4f}".format(i + 1, rec_loss))
-        #     average_accs = sum(rec_losses) / (context)
-        #     print('=> reconstruction loss over all {} contexts: {:.4f}\n\n'.format(context, average_accs))
 
 #------------------------------------------------------------------------------------------------------------#
 

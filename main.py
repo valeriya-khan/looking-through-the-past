@@ -499,7 +499,7 @@ def run(args, verbose=False):
             precs, recalls = [], []
             names = []
             for task in range(1, args.contexts+1):
-                utils.load_checkpoint_old(model, '', name=f'/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/develop/model-CIFAR50-seed{args.seed}-context{task}-develop', verbose=verbose, strict=False)
+                utils.load_checkpoint_old(model, '', name=f'./store/models/develop/model-CIFAR50-seed{args.seed}-context{task}-develop', verbose=verbose, strict=False)
                 active_classes = list(range(50 + model.classes_per_context * (task-1)))
                 concat_dataset = ConcatDataset([test_datasets[i] for i in range(task)])
                 # gen_size = 0
@@ -541,7 +541,7 @@ def run(args, verbose=False):
             # logging.info(f'precision: {precision}, recall: {recall}')
             figure = plot_pr_curves(precs, recalls, names=names, colors=['red', 'orange', 'limegreen', 'deepskyblue', 'blue', 'magenta'],
                    figsize=None, with_dots=False, linestyle="solid", title=None, title_top=None, alpha=None)
-            figure.savefig(f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/logs/figs/recall_prec_one_plot_{args.seed}_develop.pdf")
+            figure.savefig(f"./logs/figs/recall_prec_one_plot_{args.seed}_develop.pdf")
         if verbose:
             logging.info("\nLoading parameters of previously trained model...")
         if args.model_type=="conv":
