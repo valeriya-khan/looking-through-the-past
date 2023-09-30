@@ -10,7 +10,7 @@ Short version of this work is presented on Continual Learning worskshop at ICCV2
 This repository is based on continual learning replay:
 <https://github.com/GMvandeVen/continual-learning>
 
-This repository mainly supports experiments in the *academic continual learning setting*, whereby
+Experiments are performed in the *academic continual learning setting*, whereby
 a classification-based problem is split up into multiple, non-overlapping *contexts*
 (or *tasks*, as they are often called) that must be learned sequentially.
 
