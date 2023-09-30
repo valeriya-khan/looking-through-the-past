@@ -3,12 +3,12 @@
 This is a PyTorch implementation of the continual learning experiments with deep neural networks described in the
 following article:
 * Looking through the past: better knowledge retention for generative replay in continual learning (under review)
-[link](https://arxiv.org/abs/2309.10012)
+  <https://arxiv.org/abs/2309.10012>
 
 Short version of this work is presented on Continual Learning worskshop at ICCV2023.
 
 This repository is based on continual learning replay:
-[link] (https://github.com/GMvandeVen/continual-learning)
+<https://github.com/GMvandeVen/continual-learning>
 
 This repository mainly supports experiments in the *academic continual learning setting*, whereby
 a classification-based problem is split up into multiple, non-overlapping *contexts*
