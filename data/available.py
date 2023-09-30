@@ -9,10 +9,10 @@ class MiniDataset(Dataset):
         self.trsf = transform
         self.target_transform = target_transform
         if train is True:
-            with open("/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/datasets/MINI/mini_cl_train.csv", 'r') as f:
+            with open("./store/datasets/MINI/mini_cl_train.csv", 'r') as f:
                 lines = list(map(lambda x: (x).replace("\n", "").split(","), f.readlines()))
         else:
-            with open("/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/datasets/MINI/mini_cl_test.csv", 'r') as f:
+            with open("./store/datasets/MINI/mini_cl_test.csv", 'r') as f:
                 lines = list(map(lambda x: (x).replace("\n", "").split(","), f.readlines()))
         
         self.images, self.labels = zip(*lines)

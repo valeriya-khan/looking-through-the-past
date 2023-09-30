@@ -786,7 +786,6 @@ class CondVAE(ContinualLearner):
         # Backpropagate errors
         loss_total.backward()
         # Take optimization-step
-        # torch.nn.utils.clip_grad_norm_(self.parameters(), 100)
         self.optimizer.step()
 
 

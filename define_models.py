@@ -294,16 +294,16 @@ def init_params(model, args, depth=0, verbose=False):
                                 "-s{}".format(args.seed) if checkattr(args, 'seed_to_ltag') else "")
         utils.load_checkpoint_old(model.convE, model_dir=args.m_dir, name=load_name, verbose=verbose)
     elif utils.checkattr(args, "pre_convE") and args.experiment=="MINI" and depth>0:
-        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_seed_0_resnet18_0.pth"
+        load_name = f"./store/models/finetune_seed_0_resnet18_0.pth"
         utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
     elif utils.checkattr(args, "pre_convE") and args.experiment=="TINY" and depth>0:
-        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_seed_0_0_45.5.pth"
+        load_name = f"./store/models/finetune_seed_0_0_45.5.pth"
         utils.load_checkpoint(model, model_dir='', name=load_name, verbose=verbose)
     elif utils.checkattr(args, "pre_convE") and args.experiment=="IN100" and depth>0:
-        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetuneSubset_seed_0_0.pth"
+        load_name = f"./store/models/finetuneSubset_seed_0_0.pth"
         utils.load_checkpoint(model, model_dir='', name=load_name, verbose=verbose)
     elif utils.checkattr(args, "pre_convE") and model.name=="resnet32":
-        load_name = f"/raid/NFS_SHARE/home/valeriya.khan/continual-learning/store/models/finetune_seed_0_0.pth"
+        load_name = f"./store/models/finetune_seed_0_0.pth"
         utils.load_checkpoint(model, model_dir=args.m_dir, name=load_name, verbose=verbose)
     
     # if utils.checkattr(args, "pre_convE") and model.__class__.__name__=="resnet18":

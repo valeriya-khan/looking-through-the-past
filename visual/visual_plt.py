@@ -427,16 +427,18 @@ def plot_pr_curves(precision_list, recall_list, names=None, colors=None,
         axarr.set_xlim(xlim)
     # -add axis-labels
     if xlabel is not None:
-        axarr.set_xlabel(xlabel)
+        axarr.set_xlabel(xlabel, fontsize=14)
+        axarr.xaxis.set_tick_params(labelsize = 14)
+        axarr.yaxis.set_tick_params(labelsize = 14)
     if ylabel is not None:
-        axarr.set_ylabel(ylabel)
+        axarr.set_ylabel(ylabel, fontsize=14)
     # -add title(s)
     if title is not None:
-        axarr.set_title(title)
+        axarr.set_title(title, fontsize=14)
     if title_top is not None:
-        f.suptitle(title_top)
+        f.suptitle(title_top, fontsize=14)
     # -add legend
     if names is not None:
-        axarr.legend()
+        axarr.legend(fontsize=14, loc='lower left')
 
     return f
